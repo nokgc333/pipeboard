@@ -1,0 +1,30 @@
+name: CI Backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**"]
+  pull_request:
+    paths: ["backend/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r requirements.txt
+      - run: black --check .
+      - run: isort --check .
+      - run: flake8 app/ tests/
+      - run: mypy app/
+      - run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+      - run: pip-audit

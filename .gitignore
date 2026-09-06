@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Backend runtime data
+backend/pipeboard.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/next-env.d.ts
+
+# OS
+.DS_Store
+frontend/tsconfig.tsbuildinfo

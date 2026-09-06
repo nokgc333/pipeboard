@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pipeboard-backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 8000"],
+      "port": 8000
+    },
+    {
+      "name": "pipeboard-frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd frontend && npm run dev"],
+      "port": 3000
+    }
+  ]
+}
