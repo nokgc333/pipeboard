@@ -73,8 +73,14 @@ send_status_update("http://localhost:8000", "shot", 1, "in_review")
 cd desktop_client
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cd ..                                 # リポジトリルートに戻る（desktop_clientをパッケージとしてimportするため必須）
 python -m desktop_client.app          # PIPEBOARD_API_BASE_URLで接続先を変更可能（既定 http://localhost:8000）
 ```
+
+> `desktop_client`ディレクトリの中にいたままだと`python -m desktop_client.app`は
+> `ModuleNotFoundError: No module named 'desktop_client'`で失敗する（`desktop_client`自身が
+> パッケージ名のため、その親ディレクトリがカレントディレクトリである必要がある）。
+> venvの有効化は`desktop_client/`内で行って構わないが、起動コマンドは必ずリポジトリルートで実行すること。
 
 ステータスごとの列（未着手/作業中/レビュー/完了）でショット一覧が表示され、ショットを選択してコンボボックスから新しいステータスを選んで「適用」を押すと、Webのカンバンボードと同じバックエンドAPI（`PATCH /shots/{id}/status`）経由でDBが更新されます。「更新」ボタンで一覧を再取得できます。
 
