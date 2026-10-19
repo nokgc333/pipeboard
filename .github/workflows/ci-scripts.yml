@@ -3,9 +3,10 @@ name: CI Scripts
 on:
   push:
     branches: [main]
-    paths: ["scripts/**"]
+    paths: ["scripts/**", ".github/workflows/ci-scripts.yml"]
   pull_request:
-    paths: ["scripts/**"]
+    paths: ["scripts/**", ".github/workflows/ci-scripts.yml"]
+  workflow_dispatch:
 
 jobs:
   test:
