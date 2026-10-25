@@ -1,7 +1,7 @@
 # ADR-0004: 認証・権限管理をv1スコープ外とする設計判断
 
 ## Status
-Accepted (2026-09-07)
+Superseded by [ADR-0005](0005-token-authentication.md) (2026-10-25). 元の決定: Accepted (2026-09-07)
 
 ## Context
 PipeBoard miniは個人開発ポートフォリオであり、単一利用者・デモ用途を想定している。

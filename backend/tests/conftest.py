@@ -11,6 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import rate_limit
 from app.database import Base, get_db
 from app.main import app
 
@@ -19,6 +20,11 @@ from app.main import app
 def isolated_upload_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """テストが実プロジェクトのuploads/を汚さないよう、一時ディレクトリに差し替える。"""
     monkeypatch.setenv("PIPEBOARD_UPLOAD_DIR", str(tmp_path / "uploads"))
+
+
+@pytest.fixture(autouse=True)
+def fresh_rate_limiter() -> None:
+    rate_limit.reset()
 
 
 @pytest.fixture()

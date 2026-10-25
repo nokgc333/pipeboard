@@ -56,3 +56,29 @@ def test_send_status_update_raises_on_http_error() -> None:
 
     with pytest.raises(Exception, match="404"):
         send_status_update("http://localhost:8000", "shot", 999, "done", session=session)
+
+
+def test_send_status_update_sends_the_bearer_token_when_given() -> None:
+    session = MagicMock()
+    session.patch.return_value.json.return_value = {}
+
+    send_status_update(
+        "http://localhost:8000", "shot", 1, "done", session=session, token="secret-token-1"
+    )
+
+    session.patch.assert_called_once_with(
+        "http://localhost:8000/shots/1/status",
+        json={"status": "done"},
+        timeout=5,
+        headers={"Authorization": "Bearer secret-token-1"},
+    )
+
+
+def test_send_status_update_reads_the_token_from_the_environment(monkeypatch) -> None:
+    monkeypatch.setenv("PIPEBOARD_API_TOKEN", "env-token-00001")
+    session = MagicMock()
+    session.patch.return_value.json.return_value = {}
+
+    send_status_update("http://localhost:8000", "shot", 1, "done", session=session)
+
+    assert session.patch.call_args.kwargs["headers"] == {"Authorization": "Bearer env-token-00001"}

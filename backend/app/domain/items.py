@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.auth import requires_admin, requires_editor, requires_viewer
 from app.database import get_db
 from app.domain.status_transition import is_valid_status
 
@@ -32,11 +33,16 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
             )
         return cast(Item, item)
 
-    @router.get("", response_model=list[schemas.ItemOut])
+    @router.get("", response_model=list[schemas.ItemOut], dependencies=[requires_viewer])
     def list_items(db: Session = Depends(get_db)) -> list[Item]:
         return cast(list[Item], db.query(model).order_by(model.created_at.desc()).all())
 
-    @router.post("", response_model=schemas.ItemOut, status_code=status.HTTP_201_CREATED)
+    @router.post(
+        "",
+        response_model=schemas.ItemOut,
+        status_code=status.HTTP_201_CREATED,
+        dependencies=[requires_editor],
+    )
     def create_item(
         payload: schemas.ItemCreate, db: Session = Depends(get_db)
     ) -> models.Shot | models.Asset:
@@ -46,11 +52,11 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
         db.refresh(item)
         return item
 
-    @router.get("/{item_id}", response_model=schemas.ItemOut)
+    @router.get("/{item_id}", response_model=schemas.ItemOut, dependencies=[requires_viewer])
     def get_item(item_id: int, db: Session = Depends(get_db)) -> models.Shot | models.Asset:
         return _get_or_404(item_id, db)
 
-    @router.put("/{item_id}", response_model=schemas.ItemOut)
+    @router.put("/{item_id}", response_model=schemas.ItemOut, dependencies=[requires_editor])
     def update_item(
         item_id: int, payload: schemas.ItemUpdate, db: Session = Depends(get_db)
     ) -> models.Shot | models.Asset:
@@ -60,7 +66,9 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
         db.refresh(item)
         return item
 
-    @router.patch("/{item_id}/status", response_model=schemas.ItemOut)
+    @router.patch(
+        "/{item_id}/status", response_model=schemas.ItemOut, dependencies=[requires_editor]
+    )
     def update_status(
         item_id: int, payload: schemas.StatusUpdate, db: Session = Depends(get_db)
     ) -> models.Shot | models.Asset:
@@ -75,7 +83,9 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
         db.refresh(item)
         return item
 
-    @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+    @router.delete(
+        "/{item_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[requires_admin]
+    )
     def delete_item(item_id: int, db: Session = Depends(get_db)) -> None:
         item = _get_or_404(item_id, db)
         # DBレベルのFK制約がないため（ADR-0002）、アプリ層で明示的にカスケード削除する
@@ -84,7 +94,11 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
         db.delete(item)
         db.commit()
 
-    @router.get("/{item_id}/versions", response_model=list[schemas.VersionOut])
+    @router.get(
+        "/{item_id}/versions",
+        response_model=list[schemas.VersionOut],
+        dependencies=[requires_viewer],
+    )
     def list_versions(item_id: int, db: Session = Depends(get_db)) -> list[models.Version]:
         _get_or_404(item_id, db)
         return (
@@ -94,7 +108,11 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
             .all()
         )
 
-    @router.get("/{item_id}/comments", response_model=list[schemas.CommentOut])
+    @router.get(
+        "/{item_id}/comments",
+        response_model=list[schemas.CommentOut],
+        dependencies=[requires_viewer],
+    )
     def list_comments(item_id: int, db: Session = Depends(get_db)) -> list[models.Comment]:
         _get_or_404(item_id, db)
         return (

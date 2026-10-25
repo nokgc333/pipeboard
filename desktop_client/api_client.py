@@ -8,6 +8,7 @@ RFC 9457 (Problem Details, `app/errors.py`)準拠のため、`ApiError`でラッ
 
 from __future__ import annotations
 
+import os
 from typing import Any, Protocol
 
 import requests
@@ -55,9 +56,21 @@ class PipeBoardApiClient:
     このクライアントを経由してのみバックエンドと通信する。
     """
 
-    def __init__(self, base_url: str, session: _HttpSession | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        session: _HttpSession | None = None,
+        token: str | None = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._session = session or requests.Session()
+        self._token = token or os.environ.get("PIPEBOARD_API_TOKEN")
+
+    def _request_options(self) -> dict[str, Any]:
+        options: dict[str, Any] = {"timeout": _REQUEST_TIMEOUT_SECONDS}
+        if self._token:
+            options["headers"] = {"Authorization": f"Bearer {self._token}"}
+        return options
 
     def _handle_response(self, response: _HttpResponse) -> Any:
         if not (200 <= response.status_code < 300):
@@ -72,11 +85,11 @@ class PipeBoardApiClient:
         return response.json()
 
     def list_shots(self) -> list[dict[str, Any]]:
-        response = self._session.get(f"{self._base_url}/shots", timeout=_REQUEST_TIMEOUT_SECONDS)
+        response = self._session.get(f"{self._base_url}/shots", **self._request_options())
         return list(self._handle_response(response))
 
     def list_assets(self) -> list[dict[str, Any]]:
-        response = self._session.get(f"{self._base_url}/assets", timeout=_REQUEST_TIMEOUT_SECONDS)
+        response = self._session.get(f"{self._base_url}/assets", **self._request_options())
         return list(self._handle_response(response))
 
     def update_shot_status(self, shot_id: int, status: str) -> dict[str, Any]:
@@ -88,7 +101,7 @@ class PipeBoardApiClient:
         response = self._session.patch(
             f"{self._base_url}/{path}/{item_id}/status",
             json={"status": status},
-            timeout=_REQUEST_TIMEOUT_SECONDS,
+            **self._request_options(),
         )
         result: dict[str, Any] = self._handle_response(response)
         return result
@@ -96,14 +109,14 @@ class PipeBoardApiClient:
     def list_versions(self, item_type: str, item_id: int) -> list[dict[str, Any]]:
         path = _item_path(item_type)
         response = self._session.get(
-            f"{self._base_url}/{path}/{item_id}/versions", timeout=_REQUEST_TIMEOUT_SECONDS
+            f"{self._base_url}/{path}/{item_id}/versions", **self._request_options()
         )
         return list(self._handle_response(response))
 
     def list_comments(self, item_type: str, item_id: int) -> list[dict[str, Any]]:
         path = _item_path(item_type)
         response = self._session.get(
-            f"{self._base_url}/{path}/{item_id}/comments", timeout=_REQUEST_TIMEOUT_SECONDS
+            f"{self._base_url}/{path}/{item_id}/comments", **self._request_options()
         )
         return list(self._handle_response(response))
 
@@ -113,7 +126,7 @@ class PipeBoardApiClient:
         response = self._session.post(
             f"{self._base_url}/comments",
             json={"item_type": item_type, "item_id": item_id, "body": body, "tag": tag},
-            timeout=_REQUEST_TIMEOUT_SECONDS,
+            **self._request_options(),
         )
         result: dict[str, Any] = self._handle_response(response)
         return result

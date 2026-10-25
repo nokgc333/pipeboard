@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+ItemType = Literal["shot", "asset"]
 
 
 class ItemCreate(BaseModel):
@@ -42,7 +45,7 @@ class VersionOut(BaseModel):
 
 
 class CommentCreate(BaseModel):
-    item_type: str
+    item_type: ItemType
     item_id: int
     body: str = Field(min_length=1, max_length=2000)
     tag: str | None = Field(default=None, max_length=30)

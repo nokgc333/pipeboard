@@ -38,7 +38,20 @@ export interface CommentDto {
   created_at: string;
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+function withAuthorization(init?: RequestInit): RequestInit | undefined {
+  const token = process.env.NEXT_PUBLIC_API_TOKEN;
+  if (!token) return init;
+  return {
+    ...init,
+    headers: {
+      ...(init?.headers as Record<string, string> | undefined),
+      Authorization: `Bearer ${token}`,
+    },
+  };
+}
+
+async function request<T>(url: string, requestInit?: RequestInit): Promise<T> {
+  const init = withAuthorization(requestInit);
   const response = init === undefined ? await fetch(url) : await fetch(url, init);
   if (!response.ok) {
     const problem = await response.json().catch(() => ({}));
