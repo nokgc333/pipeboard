@@ -13,6 +13,7 @@ CIのpytestでHTTP呼び出しロジックを直接検証できる（仕様書§
 
 from __future__ import annotations
 
+import os
 from typing import Any, Protocol
 
 import requests
@@ -21,7 +22,7 @@ ITEM_TYPE_PATHS = {"shot": "shots", "asset": "assets"}
 
 
 class _HttpSession(Protocol):
-    def patch(self, url: str, json: dict[str, Any], timeout: int) -> Any: ...
+    def patch(self, url: str, **kwargs: Any) -> Any: ...
 
 
 def build_status_update_url(base_url: str, item_type: str, item_id: int) -> str:
@@ -38,6 +39,7 @@ def send_status_update(
     item_id: int,
     status: str,
     session: _HttpSession | None = None,
+    token: str | None = None,
 ) -> dict[str, Any]:
     """PipeBoard miniのステータス更新APIをPATCHで呼び出す。
 
@@ -46,7 +48,11 @@ def send_status_update(
     """
     http = session or requests
     url = build_status_update_url(base_url, item_type, item_id)
-    response = http.patch(url, json={"status": status}, timeout=5)
+    api_token = token or os.environ.get("PIPEBOARD_API_TOKEN")
+    extra: dict[str, Any] = (
+        {"headers": {"Authorization": f"Bearer {api_token}"}} if api_token else {}
+    )
+    response = http.patch(url, json={"status": status}, timeout=5, **extra)
     response.raise_for_status()
     result: dict[str, Any] = response.json()
     return result

@@ -229,3 +229,47 @@ class TestClientConstruction:
         client = PipeBoardApiClient("http://localhost:8000")
 
         assert isinstance(client._session, requests.Session)
+
+
+class TestAuthorizationHeader:
+    def test_token_is_sent_as_a_bearer_header(self) -> None:
+        session = FakeSession()
+        client = PipeBoardApiClient(
+            "http://localhost:8000", session=session, token="secret-token-1"
+        )
+
+        client.list_shots()
+        client.update_shot_status(1, "in_progress")
+
+        assert all(
+            call[2]["headers"] == {"Authorization": "Bearer secret-token-1"}
+            for call in session.calls
+        )
+
+    def test_no_header_is_sent_without_a_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("PIPEBOARD_API_TOKEN", raising=False)
+        session = FakeSession()
+        client = PipeBoardApiClient("http://localhost:8000", session=session)
+
+        client.list_shots()
+
+        assert "headers" not in session.calls[0][2]
+
+    def test_token_falls_back_to_the_environment(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PIPEBOARD_API_TOKEN", "env-token-00001")
+        session = FakeSession()
+        client = PipeBoardApiClient("http://localhost:8000", session=session)
+
+        client.list_assets()
+
+        assert session.calls[0][2]["headers"] == {"Authorization": "Bearer env-token-00001"}
+
+    def test_a_401_response_surfaces_as_api_error(self) -> None:
+        session = FakeSession()
+        session.get_response = FakeResponse(401, {"title": "Authentication required"})
+        client = PipeBoardApiClient("http://localhost:8000", session=session)
+
+        with pytest.raises(ApiError) as exc:
+            client.list_shots()
+
+        assert exc.value.status_code == 401
