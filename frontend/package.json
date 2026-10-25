@@ -17,7 +17,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "^15.5.20",
+    "next": "^15.5.28",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
@@ -33,11 +33,16 @@
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^3.2.7",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.5.20",
+    "eslint-config-next": "^15.5.28",
     "happy-dom": "^20.10.6",
     "postcss": "^8.5.16",
     "tailwindcss": "^4.3.2",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "$postcss"
+    }
   }
 }
