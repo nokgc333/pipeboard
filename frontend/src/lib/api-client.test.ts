@@ -132,3 +132,50 @@ describe("api-client", () => {
     });
   });
 });
+
+describe("api-client authorization", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("sends a bearer token when NEXT_PUBLIC_API_TOKEN is set", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_TOKEN", "secret-token-1");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await listShots("http://localhost:8000");
+
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8000/shots", {
+      headers: { Authorization: "Bearer secret-token-1" },
+    });
+  });
+
+  it("keeps the content type when it adds the token to a JSON request", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_TOKEN", "secret-token-1");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createComment("http://localhost:8000", { item_type: "shot", item_id: 1, body: "hi" });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.headers).toEqual({
+      "Content-Type": "application/json",
+      Authorization: "Bearer secret-token-1",
+    });
+  });
+
+  it("surfaces 401 and 403 as an ApiError with the problem title", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ title: "Insufficient permissions" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listShots("http://localhost:8000")).rejects.toMatchObject({
+      status: 403,
+      message: "Insufficient permissions",
+    });
+  });
+});
