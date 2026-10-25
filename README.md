@@ -87,14 +87,14 @@ python -m desktop_client.app          # PIPEBOARD_API_BASE_URLで接続先を変
 ## テスト
 
 ```bash
-# バックエンド（30テスト、カバレッジ98%）
+# バックエンド（80テスト、カバレッジ95%）
 cd backend && pytest --cov=app --cov-report=term-missing
 
-# フロントエンド（32テスト、domain/lib層カバレッジ100%）
+# フロントエンド（42テスト、domain/lib層カバレッジ80%以上）
 cd frontend && npm run test -- --coverage
 npm run type-check
 
-# Houdini連携スクリプト（5テスト、hou非依存）
+# Houdini連携スクリプト（7テスト、hou非依存）
 cd scripts && pytest tests/ -v
 
 # デスクトップクライアント（46テスト、カバレッジ99%、本物のPySide6ウィジェットをheadlessで検証）
@@ -103,9 +103,31 @@ cd desktop_client && QT_QPA_PLATFORM=offscreen pytest --cov=. --cov-report=term-
 
 実際にバックエンド+フロントエンドを起動し、ブラウザ上でカンバン表示・ステータス変更（楽観的更新→API反映）・コメント投稿がDBまで正しく反映されることをE2Eで確認済みです。デスクトップクライアントについても、実際に稼働中のバックエンド（シード済みデータ）に対して`QT_QPA_PLATFORM=offscreen`下でメインウィンドウを起動し、実データの一覧取得・カンバン列への表示・ステータス変更操作がバックエンドDBまで正しく反映されることを確認済みです（ウィジェットの内部状態をコードで検証、目視確認は行っていません）。
 
+## 認証・セキュリティ設定
+
+| 環境変数 | 既定値 | 意味 |
+| --- | --- | --- |
+| `PIPEBOARD_AUTH_MODE` | `local` | `local`=認証なし（自分のマシン専用） / `token`=Bearerトークン必須 |
+| `PIPEBOARD_API_TOKENS` | なし | `token` モードで必須。`viewer=...,editor=...,admin=...`（各12文字以上） |
+| `PIPEBOARD_CORS_ORIGINS` | `http://localhost:3000` | 許可するOrigin（カンマ区切り）。`*` は明示した場合のみ |
+| `PIPEBOARD_RATE_LIMIT_READ_PER_MINUTE` | `300` | 読み取りの上限（IPごと、1分あたり） |
+| `PIPEBOARD_RATE_LIMIT_WRITE_PER_MINUTE` | `60` | 書き込みの上限（同上） |
+| `PIPEBOARD_API_TOKEN` | なし | デスクトップクライアント・Houdiniスクリプトが送るトークン |
+| `NEXT_PUBLIC_API_TOKEN` | なし | Webフロントが送るトークン（配信されるJSに含まれるため、閲覧専用トークンか信頼できるネットワークに限る） |
+
+```bash
+export PIPEBOARD_AUTH_MODE=token
+export PIPEBOARD_API_TOKENS="viewer=$(openssl rand -hex 16),editor=$(openssl rand -hex 16),admin=$(openssl rand -hex 16)"
+```
+
+- ロール: `viewer`=閲覧 / `editor`=作成・更新・ステータス変更・コメント・アップロード / `admin`=削除を含む全操作。未認証は401、権限不足は403。
+- Docker Compose はポートを `127.0.0.1` にだけ公開している。外部に出す場合は、`token` モードとTLS（リバースプロキシ）を併用すること。
+- アップロードは、拡張子・Content-Type・先頭バイト（PNG/JPEG/WebP）を検証し、10MBを超えると途中で打ち切る。
+- フロントエンドは、CSP・HSTS・`X-Content-Type-Options`・`X-Frame-Options` などのヘッダを付ける（`frontend/src/lib/security-headers.mjs`）。
+
 ## 既知の制限事項（Not in scope, v1）
 
-- **認証・権限管理**: 全APIエンドポイントが認証不要（[ADR-0004](docs/adr/0004-no-auth.md)）
+- **認証・権限管理**: 既定の `local` モードは認証なし。外部に公開する場合は `token` モードにする（[ADR-0005](docs/adr/0005-token-authentication.md)）。個人ごとのログイン・監査ログは未実装
 - **同時編集の競合制御**: バージョン採番・ステータス更新ともに楽観ロックを実装していない（要件定義書§16.6参照）
 - **ドラッグ&ドロップ**: カンバンのステータス変更はセレクトボックスのみ対応。HTML5 Drag and Drop APIによる列間ドラッグは未実装（キーボード操作でも完結できることをアクセシビリティ上優先し、v1のスコープからは意図的に外した）
 - **E2Eテストの自動実行範囲**: `frontend/e2e/kanban.spec.ts`はCI（`ci-frontend.yml`のe2e-testジョブ）で自動実行されるが、Docker Compose経由の統合起動そのものはCI化していない

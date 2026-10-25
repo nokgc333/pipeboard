@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.auth import requires_editor
 from app.database import get_db
 from app.domain.filenames import generate_safe_filename
 
@@ -17,6 +18,22 @@ router = APIRouter()
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+CHUNK_SIZE = 1024 * 1024
+MAX_ORIGINAL_FILENAME_LENGTH = 255
+IMAGE_SIGNATURES: dict[str, tuple[bytes, ...]] = {
+    ".png": (b"\x89PNG\r\n\x1a\n",),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".webp": (b"RIFF",),
+}
+
+
+def _matches_signature(ext: str, contents: bytes) -> bool:
+    if not contents.startswith(IMAGE_SIGNATURES[ext]):
+        return False
+    if ext == ".webp":
+        return contents[8:12] == b"WEBP"
+    return True
 
 
 def _upload_dir() -> Path:
@@ -24,9 +41,14 @@ def _upload_dir() -> Path:
     return Path(os.environ.get("PIPEBOARD_UPLOAD_DIR", "uploads"))
 
 
-@router.post("", response_model=schemas.VersionOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=schemas.VersionOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[requires_editor],
+)
 async def upload_version(
-    item_type: str,
+    item_type: schemas.ItemType,
     item_id: int,
     file: UploadFile,
     db: Session = Depends(get_db),
@@ -36,9 +58,14 @@ async def upload_version(
         # SEC-001: 拡張子と実MIME typeの両方を検証（なりすまし拡張子対策）
         raise HTTPException(status_code=400, detail="Unsupported file type")
 
-    contents = await file.read()
-    if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+    buffer = bytearray()
+    while chunk := await file.read(CHUNK_SIZE):
+        buffer.extend(chunk)
+        if len(buffer) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+    contents = bytes(buffer)
+    if not _matches_signature(ext, contents):
+        raise HTTPException(status_code=400, detail="File content does not match its type")
 
     saved_name = generate_safe_filename(file.filename or "", ext)
     upload_dir = _upload_dir()
@@ -53,7 +80,7 @@ async def upload_version(
         item_id=item_id,
         version_number=next_version,
         thumbnail_path=f"uploads/{saved_name}",
-        original_filename=file.filename,
+        original_filename=(file.filename or "")[:MAX_ORIGINAL_FILENAME_LENGTH] or None,
     )
     db.add(version)
     db.commit()

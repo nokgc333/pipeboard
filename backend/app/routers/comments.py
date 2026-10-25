@@ -6,12 +6,18 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.auth import requires_editor
 from app.database import get_db
 
 router = APIRouter()
 
 
-@router.post("", response_model=schemas.CommentOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=schemas.CommentOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[requires_editor],
+)
 def create_comment(payload: schemas.CommentCreate, db: Session = Depends(get_db)) -> models.Comment:
     comment = models.Comment(
         item_type=payload.item_type,

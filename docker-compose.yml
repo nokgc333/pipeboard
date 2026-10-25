@@ -3,12 +3,15 @@ services:
     build:
       context: ./backend
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - pipeboard_db:/app/data
       - uploads:/app/uploads
     environment:
       PIPEBOARD_DATABASE_URL: sqlite:////app/data/pipeboard.db
+      PIPEBOARD_AUTH_MODE: ${PIPEBOARD_AUTH_MODE:-local}
+      PIPEBOARD_API_TOKENS: ${PIPEBOARD_API_TOKENS:-}
+      PIPEBOARD_CORS_ORIGINS: ${PIPEBOARD_CORS_ORIGINS:-http://localhost:3000}
     command: >
       sh -c "python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
@@ -16,7 +19,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
     depends_on:
