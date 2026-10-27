@@ -12,11 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import rate_limit
 from app.auth import load_auth_settings
 from app.cors import load_allowed_origins
-from app.database import Base, engine
 from app.errors import problem_details_handler
 from app.routers import assets, comments, shots, versions
-
-Base.metadata.create_all(bind=engine)
 
 
 @asynccontextmanager

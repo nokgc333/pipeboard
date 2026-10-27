@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "generate:api": "openapi-typescript openapi.json -o src/lib/api-types.ts"
   },
   "dependencies": {
     "next": "^15.5.28",
@@ -35,6 +36,7 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.5.28",
     "happy-dom": "^20.10.6",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.16",
     "tailwindcss": "^4.3.2",
     "typescript": "^5.6.0",

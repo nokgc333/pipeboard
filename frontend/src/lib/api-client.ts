@@ -1,5 +1,6 @@
 /** バックエンドAPI(FastAPI)向けの薄いfetchラッパー。 */
 import type { Status } from "@/domain/status/status";
+import type { components } from "@/lib/api-types";
 
 export class ApiError extends Error {
   status: number;
@@ -11,32 +12,11 @@ export class ApiError extends Error {
   }
 }
 
-export interface ItemDto {
-  id: number;
-  name: string;
-  status: Status;
-  created_at?: string;
-  updated_at?: string;
-}
+type Schemas = components["schemas"];
 
-export interface VersionDto {
-  id: number;
-  item_type: "shot" | "asset";
-  item_id: number;
-  version_number: number;
-  thumbnail_path: string;
-  original_filename: string | null;
-  created_at: string;
-}
-
-export interface CommentDto {
-  id: number;
-  item_type: "shot" | "asset";
-  item_id: number;
-  body: string;
-  tag: string | null;
-  created_at: string;
-}
+export type ItemDto = Schemas["ItemOut"];
+export type VersionDto = Schemas["VersionOut"];
+export type CommentDto = Schemas["CommentOut"];
 
 function withAuthorization(init?: RequestInit): RequestInit | undefined {
   const token = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -120,7 +100,7 @@ export function uploadVersion(
 
 export function createComment(
   baseUrl: string,
-  payload: { item_type: "shot" | "asset"; item_id: number; body: string; tag?: string },
+  payload: Schemas["CommentCreate"],
 ): Promise<CommentDto> {
   return request<CommentDto>(`${baseUrl}/comments`, jsonInit("POST", payload));
 }

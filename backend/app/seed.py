@@ -6,15 +6,16 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import models
-from app.database import Base, SessionLocal
+from app.database import SessionLocal
 from app.database import engine as default_engine
+from app.migrate import upgrade_to_head
 
 
 def seed(
     engine: Engine = default_engine,
     session_factory: sessionmaker[Session] = SessionLocal,
 ) -> None:
-    Base.metadata.create_all(bind=engine)
+    upgrade_to_head(engine.url.render_as_string(hide_password=False))
     db = session_factory()
     try:
         if db.query(models.Shot).count() > 0:

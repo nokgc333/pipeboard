@@ -10,36 +10,26 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class Shot(Base):
+def _utc_now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+class _ItemColumns:
+    """shots と assets が共有する列(同一スキーマ、別テーブル。ADR-0002)。"""
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(20), default="not_started")
+    created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)
+    updated_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now, onupdate=_utc_now)
+
+
+class Shot(_ItemColumns, Base):
     __tablename__ = "shots"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100))
-    status: Mapped[str] = mapped_column(String(20), default="not_started")
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc),
-        onupdate=lambda: datetime.datetime.now(datetime.timezone.utc),
-    )
 
-
-class Asset(Base):
-    """shotsと同一スキーマだが別テーブルとして分離する（ADR-0002）。"""
-
+class Asset(_ItemColumns, Base):
     __tablename__ = "assets"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100))
-    status: Mapped[str] = mapped_column(String(20), default="not_started")
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc),
-        onupdate=lambda: datetime.datetime.now(datetime.timezone.utc),
-    )
 
 
 class Version(Base):
@@ -54,9 +44,7 @@ class Version(Base):
     version_number: Mapped[int] = mapped_column()
     thumbnail_path: Mapped[str] = mapped_column(String(255))
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)
 
 
 class Comment(Base):
@@ -68,6 +56,4 @@ class Comment(Base):
     item_id: Mapped[int] = mapped_column()
     body: Mapped[str] = mapped_column(Text())
     tag: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)

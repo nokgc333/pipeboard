@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KanbanBoard } from "../KanbanBoard";
 import * as apiClient from "@/lib/api-client";
+import type { ItemDto } from "@/lib/api-client";
 
 vi.mock("@/lib/api-client", async () => {
   const actual = await vi.importActual<typeof apiClient>("@/lib/api-client");
@@ -22,6 +23,12 @@ const mockedUpdateStatus = vi.mocked(apiClient.updateStatus);
 beforeEach(() => {
   vi.resetAllMocks();
 });
+
+const TIMESTAMP = "2026-10-27T00:00:00";
+
+function item(id: number, name: string, status: ItemDto["status"]): ItemDto {
+  return { id, name, status, created_at: TIMESTAMP, updated_at: TIMESTAMP };
+}
 
 describe("KanbanBoard", () => {
   it("読み込み中はスケルトンを表示する", () => {
@@ -43,8 +50,8 @@ describe("KanbanBoard", () => {
   });
 
   it("取得したショット/アセットを4列に振り分けて表示する", async () => {
-    mockedListShots.mockResolvedValue([{ id: 1, name: "SHOT010", status: "in_progress" }]);
-    mockedListAssets.mockResolvedValue([{ id: 2, name: "Character_Hero", status: "done" }]);
+    mockedListShots.mockResolvedValue([item(1, "SHOT010", "in_progress")]);
+    mockedListAssets.mockResolvedValue([item(2, "Character_Hero", "done")]);
 
     render(<KanbanBoard baseUrl="http://localhost:8000" />);
 
@@ -63,7 +70,7 @@ describe("KanbanBoard", () => {
   });
 
   it("ステータス変更失敗時は楽観的更新をロールバックする", async () => {
-    mockedListShots.mockResolvedValue([{ id: 1, name: "SHOT010", status: "not_started" }]);
+    mockedListShots.mockResolvedValue([item(1, "SHOT010", "not_started")]);
     mockedListAssets.mockResolvedValue([]);
     mockedUpdateStatus.mockRejectedValue(new apiClient.ApiError(400, "Invalid status"));
     const user = userEvent.setup();
