@@ -66,6 +66,111 @@
         "title": "Body_upload_version_versions_post",
         "type": "object"
       },
+      "CheckOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_count": {
+            "title": "Error Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "item_type": {
+            "enum": [
+              "shot",
+              "asset"
+            ],
+            "title": "Item Type",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "warning_count": {
+            "title": "Warning Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "item_type",
+          "item_id",
+          "tool",
+          "subject",
+          "passed",
+          "error_count",
+          "warning_count",
+          "created_at"
+        ],
+        "title": "CheckOut",
+        "type": "object"
+      },
+      "CheckReportIn": {
+        "additionalProperties": false,
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "maxItems": 2000,
+            "title": "Findings",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "has_errors": {
+            "title": "Has Errors",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "subject": {
+            "maxLength": 255,
+            "title": "Subject",
+            "type": "string"
+          },
+          "tool": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,29}$",
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tool",
+          "generated_at",
+          "subject",
+          "has_errors",
+          "findings"
+        ],
+        "title": "CheckReportIn",
+        "type": "object"
+      },
       "CommentCreate": {
         "properties": {
           "body": {
@@ -155,6 +260,44 @@
           "created_at"
         ],
         "title": "CommentOut",
+        "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "maxLength": 2000,
+            "title": "Message",
+            "type": "string"
+          },
+          "rule": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Rule",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "error",
+              "warning",
+              "info"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "target": {
+            "maxLength": 500,
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "severity",
+          "target",
+          "message"
+        ],
+        "title": "Finding",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -615,6 +758,102 @@
           }
         },
         "summary": "Update Item",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/assets/{item_id}/checks": {
+      "get": {
+        "operationId": "list_checks_assets__item_id__checks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CheckOut"
+                  },
+                  "title": "Response List Checks Assets  Item Id  Checks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Checks",
+        "tags": [
+          "assets"
+        ]
+      },
+      "post": {
+        "operationId": "submit_check_assets__item_id__checks_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckReportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Check",
         "tags": [
           "assets"
         ]
@@ -1199,6 +1438,102 @@
           }
         },
         "summary": "Update Item",
+        "tags": [
+          "shots"
+        ]
+      }
+    },
+    "/shots/{item_id}/checks": {
+      "get": {
+        "operationId": "list_checks_shots__item_id__checks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CheckOut"
+                  },
+                  "title": "Response List Checks Shots  Item Id  Checks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Checks",
+        "tags": [
+          "shots"
+        ]
+      },
+      "post": {
+        "operationId": "submit_check_shots__item_id__checks_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckReportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Check",
         "tags": [
           "shots"
         ]

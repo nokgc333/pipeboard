@@ -13,6 +13,7 @@ from app import rate_limit, webhooks
 from app.auth import load_auth_settings
 from app.cors import load_allowed_origins
 from app.errors import problem_details_handler
+from app.gate_settings import load_required_checks
 from app.routers import assets, audit_log, comments, shots, versions
 
 
@@ -21,6 +22,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     load_auth_settings()
     rate_limit.load_limits()
     webhooks.load_webhook_settings()
+    load_required_checks()
     yield
 
 
