@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
+
 from app import models
-from app.database import Base, SessionLocal, engine
+from app.database import Base, SessionLocal
+from app.database import engine as default_engine
 
 
-def seed() -> None:
+def seed(
+    engine: Engine = default_engine,
+    session_factory: sessionmaker[Session] = SessionLocal,
+) -> None:
     Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+    db = session_factory()
     try:
         if db.query(models.Shot).count() > 0:
             print("Already seeded, skipping.")
