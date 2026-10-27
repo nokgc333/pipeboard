@@ -1,5 +1,7 @@
 # PipeBoard mini
 
+> **English summary.** PipeBoard mini is a small production tracker (a slimmed-down ShotGrid/Kitsu): a kanban board for shots and assets with versions (thumbnails), comments, a project > sequence > shot hierarchy, an audit log and signed webhooks. Scene-check results (the shared report format used by unibridge and scene-doctor) feed a **publish gate** that blocks review and done until the required checks pass. It has three front ends on one REST API: a Next.js web app, a PySide6 desktop client, and a Houdini script that publishes a thumbnail, a check report and a status change in one call (verified on a real Houdini 22.0.466). Token auth with roles, rate limiting, migrations (SQLite with WAL, or PostgreSQL), Docker images on GHCR, and CI that includes Lighthouse, mutation tests and a compose smoke test.
+
 ショット/アセットの進捗をカンバン形式で管理し、Houdiniから直接ステータスを更新できるミニ・プロダクショントラッカー（ShotGrid/Kitsuの縮小版）。
 
 ## 目的・背景
@@ -12,6 +14,41 @@ Houdiniで作業を終えるたびに、ブラウザに切り替えて対象シ�
 
 詳細な要件定義・設計判断は [docs/要件定義書.md](docs/要件定義書.md) / [docs/仕様書.md](docs/仕様書.md) を参照してください。
 
+## 画面
+
+| Web: カンバンボード | Web: 詳細(バージョン・コメント) |
+| --- | --- |
+| ![カンバンボード](docs/images/web-board.png) | ![詳細画面](docs/images/web-detail.png) |
+
+デスクトップクライアント(PySide6、ショットの閲覧と変更。F5 で更新、Ctrl+Enter で適用):
+
+![デスクトップクライアント](docs/images/desktop-board.png)
+
+## アーキテクチャ
+
+```mermaid
+flowchart LR
+    subgraph Clients
+        W[Web<br/>Next.js]
+        D[Desktop<br/>PySide6]
+        H[Houdini<br/>houdini_publish.py]
+    end
+    subgraph Tools[検査ツール]
+        U[unibridge]
+        S[scene-doctor]
+    end
+    W -- REST --> A
+    D -- REST --> A
+    H -- REST --> A
+    U -- 共通レポート JSON --> H
+    S -- 共通レポート JSON --> H
+    A[FastAPI<br/>認証・ロール・レート制限] --> G{公開ゲート}
+    A --> DB[(SQLite WAL<br/>または PostgreSQL)]
+    A --> F[(uploads)]
+    A -- 署名つき --> WH[Webhook]
+    A --> L[(監査ログ)]
+```
+
 ## 構成
 
 ```
@@ -19,8 +56,8 @@ pipeboard/
 ├── frontend/       Next.js 15 + TypeScript（カンバンボード・詳細画面）
 ├── backend/        FastAPI + SQLAlchemy + SQLite（REST API）
 ├── desktop_client/ PySide6デスクトップクライアント（同一REST APIを叩く別フロントエンド）
-├── scripts/        houdini_status_update.py（Houdini Python ShellからのFR-007連携）
-└── docs/           要件定義書・仕様書・ADR
+├── scripts/        houdini_status_update.py / houdini_publish.py（Houdiniからの更新・パブリッシュ）
+└── docs/           要件定義書・仕様書・ADR・運用手順書・API一覧
 ```
 
 ## 技術スタック
@@ -37,6 +74,7 @@ pipeboard/
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+python -m app.migrate       # スキーマを最新にする（Alembic）
 python -m app.seed          # デモデータ投入
 uvicorn app.main:app --reload --port 8000
 
@@ -51,8 +89,11 @@ npm run dev
 ### Docker Composeで起動する場合
 
 ```bash
+cp .env.example .env      # 必要なら編集（全設定の見本）
 docker compose up --build
 ```
+
+バックエンドが `/health` で正常と答えてからフロントエンドが起動し、マイグレーションの適用とデモデータの投入は自動です。バックアップ・復旧・更新の手順は [docs/operations.md](docs/operations.md)。
 
 ### Houdiniからステータスを更新する
 
@@ -64,6 +105,19 @@ sys.path.append("/path/to/pipeboard/scripts")
 from houdini_status_update import send_status_update
 send_status_update("http://localhost:8000", "shot", 1, "in_review")
 ```
+
+### Houdiniからサムネイル・検査結果つきでパブリッシュする
+
+```python
+import hou
+from houdini_publish import publish, write_cop_thumbnail
+write_cop_thumbnail(hou, "/tmp/thumb.png")          # 実際は、ビューポートやレンダーの画像でもよい
+publish("http://localhost:8000", "shot", 1, "/tmp/thumb.png",
+        report_path="/tmp/report.json",              # unibridge の integrity-check --format json など
+        status="in_review")                          # 公開ゲートが止めると PublishBlocked
+```
+
+実機(Houdini 22.0.466)での検証記録は [docs/verification/](docs/verification/houdini-publish-22.0.466.md)。
 
 ### PySide6デスクトップクライアントを起動する
 
@@ -87,17 +141,17 @@ python -m desktop_client.app          # PIPEBOARD_API_BASE_URLで接続先を変
 ## テスト
 
 ```bash
-# バックエンド（80テスト、カバレッジ95%）
+# バックエンド（246テスト、カバレッジ99%、床95%。PostgreSQLのテストはCIで実行）
 cd backend && pytest --cov=app --cov-report=term-missing
 
-# フロントエンド（42テスト、domain/lib層カバレッジ80%以上）
+# フロントエンド（50テスト、domain/lib層カバレッジ80%以上）
 cd frontend && npm run test -- --coverage
 npm run type-check
 
-# Houdini連携スクリプト（7テスト、hou非依存）
+# Houdini連携スクリプト（33テスト、houは偽のモジュール）
 cd scripts && pytest tests/ -v
 
-# デスクトップクライアント（46テスト、カバレッジ99%、本物のPySide6ウィジェットをheadlessで検証）
+# デスクトップクライアント（55テスト、カバレッジ99%、本物のPySide6ウィジェットをheadlessで検証）
 cd desktop_client && QT_QPA_PLATFORM=offscreen pytest --cov=. --cov-report=term-missing
 ```
 
@@ -112,6 +166,9 @@ cd desktop_client && QT_QPA_PLATFORM=offscreen pytest --cov=. --cov-report=term-
 | `PIPEBOARD_CORS_ORIGINS` | `http://localhost:3000` | 許可するOrigin（カンマ区切り）。`*` は明示した場合のみ |
 | `PIPEBOARD_RATE_LIMIT_READ_PER_MINUTE` | `300` | 読み取りの上限（IPごと、1分あたり） |
 | `PIPEBOARD_RATE_LIMIT_WRITE_PER_MINUTE` | `60` | 書き込みの上限（同上） |
+| `PIPEBOARD_REQUIRED_CHECKS` | なし | 公開ゲートで必須にする検査（`scene-doctor,unibridge`）。未設定ならゲート無効 |
+| `PIPEBOARD_WEBHOOK_URL` / `PIPEBOARD_WEBHOOK_SECRET` | なし | 変更の署名つきWebhook（秘密鍵は16文字以上） |
+| `PIPEBOARD_DATABASE_URL` | SQLite | PostgreSQLにする場合は `postgresql+psycopg://...` |
 | `PIPEBOARD_API_TOKEN` | なし | デスクトップクライアント・Houdiniスクリプトが送るトークン |
 | `NEXT_PUBLIC_API_TOKEN` | なし | Webフロントが送るトークン（配信されるJSに含まれるため、閲覧専用トークンか信頼できるネットワークに限る） |
 
@@ -127,11 +184,20 @@ export PIPEBOARD_API_TOKENS="viewer=$(openssl rand -hex 16),editor=$(openssl ran
 
 ## 既知の制限事項（Not in scope, v1）
 
-- **認証・権限管理**: 既定の `local` モードは認証なし。外部に公開する場合は `token` モードにする（[ADR-0005](docs/adr/0005-token-authentication.md)）。個人ごとのログイン・監査ログは未実装
+- **認証・権限管理**: 既定の `local` モードは認証なし。外部に公開する場合は `token` モードにする（[ADR-0005](docs/adr/0005-token-authentication.md)）。個人ごとのログインは未実装（監査ログの操作者はトークンのロール、[ADR-0008](docs/adr/0008-audit-log-and-webhooks.md)）
 - **同時編集の競合制御**: バージョン採番・ステータス更新ともに楽観ロックを実装していない（要件定義書§16.6参照）
 - **ドラッグ&ドロップ**: カンバンのステータス変更はセレクトボックスのみ対応。HTML5 Drag and Drop APIによる列間ドラッグは未実装（キーボード操作でも完結できることをアクセシビリティ上優先し、v1のスコープからは意図的に外した）
-- **E2Eテストの自動実行範囲**: `frontend/e2e/kanban.spec.ts`はCI（`ci-frontend.yml`のe2e-testジョブ）で自動実行されるが、Docker Compose経由の統合起動そのものはCI化していない
+- **E2Eテストの自動実行範囲**: `frontend/e2e/kanban.spec.ts`はCI（`ci-frontend.yml`のe2e-testジョブ）で自動実行されるが、Docker Composeの統合起動はCI（`ci-docker.yml`）でスモークテスト、Lighthouseも`ci-frontend.yml`で基準を強制している
 - **desktop_clientのスコープ**: ショットのステータス閲覧・変更のみを実装し、アセット一覧・バージョンアップロード・コメント機能はUIとしては未実装（`api_client.py`にはメソッドを用意済みだが`main_window.py`からは未使用）。Web版で完結している機能をデスクトップでも全て再実装するのではなく、「同一バックエンドを複数フロントエンドから使い回せる」ことの実証に必要な範囲に絞った
+
+## ドキュメント
+
+| 文書 | 内容 |
+| --- | --- |
+| [docs/operations.md](docs/operations.md) | 起動・バックアップ・復旧・更新・設定・困ったとき |
+| [docs/api.md](docs/api.md) | API一覧（実際のAPIから生成し、テストで一致を保証） |
+| [docs/verification/](docs/verification/houdini-publish-22.0.466.md) | Houdini実機の検証記録 |
+| [CHANGELOG.md](CHANGELOG.md) | 変更履歴（0.2.0） |
 
 ## Design Decisions
 
@@ -142,6 +208,22 @@ export PIPEBOARD_API_TOKENS="viewer=$(openssl rand -hex 16),editor=$(openssl ran
 - **拡張子とMIME typeの両方を検証**: なりすまし拡張子によるアップロード攻撃を防止（SEC-001）
 - **desktop_clientのview_model/ウィジェット層分離**: `desktop_client/view_model.py`（DCC/PySide6非依存の純粋関数）と`desktop_client/main_window.py`（PySide6ウィジェット、`api_client`を注入されるだけの疎結合設計）を分離することで、`QT_QPA_PLATFORM=offscreen` + `pytest-qt`のheadless環境で本物のPySide6ウィジェットをTDDできるようにした。これは別プロジェクト（scene_doctor）のHoudini向けPySide6パネルで採用したports-and-adapters的設計（scene_doctorのADR-0007相当）と同じ思想を踏襲している
 - **api_clientは`requests`のみに依存**: `scripts/houdini_status_update.py`と同様、注入可能な`session`でモックしテストできる設計とし、PySide6は`api_client.py`から一切importしない（バックエンド通信ロジックとGUIロジックの責務分離）
+
+## 設計判断(ADR)
+
+| 番号 | 内容 |
+| --- | --- |
+| [0001](docs/adr/0001-monorepo.md) | モノリポ・モジュラー構成の採用 |
+| [0002](docs/adr/0002-polymorphic-association.md) | VERSION/COMMENTのポリモーフィック関連採用 |
+| [0003](docs/adr/0003-sqlite.md) | SQLiteをv1の正本DBとして採用 |
+| [0004](docs/adr/0004-no-auth.md) | 認証・権限管理をv1スコープ外とする設計判断 |
+| [0005](docs/adr/0005-token-authentication.md) | トークン認証とロールを導入する（ADR-0004 を置き換える） |
+| [0006](docs/adr/0006-database-migrations-postgresql-and-wal.md) | マイグレーションと PostgreSQL 対応、SQLite は WAL |
+| [0007](docs/adr/0007-publish-gate.md) | 公開ゲート(検査に通らないものは、レビュー・完了に進めない) |
+| [0008](docs/adr/0008-audit-log-and-webhooks.md) | 監査ログと Webhook は、変更と同じトランザクションで記録する |
+| [0009](docs/adr/0009-generated-api-types.md) | フロントエンドの API の型は、OpenAPI から生成する |
+| [0010](docs/adr/0010-uploaded-images-are-public-capability-urls.md) | アップロード画像は、推測できない URL で認証なしに配信する |
+| [0011](docs/adr/0011-desktop-distribution.md) | デスクトップクライアントの配布は、当面ソースからの実行にする |
 
 ## ライセンス
 
