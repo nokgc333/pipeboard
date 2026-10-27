@@ -20,5 +20,5 @@ jobs:
       - run: black --check scripts/
       - run: isort --check scripts/
       - run: flake8 --max-line-length=100 --extend-ignore=E203 scripts/
-      - run: mypy scripts/houdini_status_update.py
+      - run: mypy scripts/houdini_status_update.py scripts/houdini_publish.py
       - run: pytest scripts/tests/ -v
