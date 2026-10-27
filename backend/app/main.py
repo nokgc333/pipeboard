@@ -9,17 +9,18 @@ from fastapi import Depends, FastAPI
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import rate_limit
+from app import rate_limit, webhooks
 from app.auth import load_auth_settings
 from app.cors import load_allowed_origins
 from app.errors import problem_details_handler
-from app.routers import assets, comments, shots, versions
+from app.routers import assets, audit_log, comments, shots, versions
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     load_auth_settings()
     rate_limit.load_limits()
+    webhooks.load_webhook_settings()
     yield
 
 
@@ -38,12 +39,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
     allow_credentials=False,
+    expose_headers=["X-Total-Count"],
 )
 
 app.include_router(shots.router, prefix="/shots", tags=["shots"])
 app.include_router(assets.router, prefix="/assets", tags=["assets"])
 app.include_router(versions.router, prefix="/versions", tags=["versions"])
 app.include_router(comments.router, prefix="/comments", tags=["comments"])
+app.include_router(audit_log.router, prefix="/audit-log", tags=["audit"])
 
 
 @app.get("/healthz")

@@ -57,3 +57,18 @@ class Comment(Base):
     body: Mapped[str] = mapped_column(Text())
     tag: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)
+
+
+class AuditLog(Base):
+    """誰が・いつ・何をしたか。変更系の操作が成功したときだけ、同じトランザクションで残す。"""
+
+    __tablename__ = "audit_log"
+    __table_args__ = (Index("idx_audit_item", "item_type", "item_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    actor: Mapped[str] = mapped_column(String(20))
+    action: Mapped[str] = mapped_column(String(40))
+    item_type: Mapped[str] = mapped_column(String(10))
+    item_id: Mapped[int] = mapped_column()
+    detail: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)

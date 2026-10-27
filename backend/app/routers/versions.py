@@ -8,8 +8,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app import models, schemas
-from app.auth import requires_editor
+from app import audit, models, schemas
+from app.auth import Role, authenticate, requires_editor
 from app.database import get_db
 from app.domain.filenames import generate_safe_filename
 from app.domain.items import get_item_or_404
@@ -53,6 +53,7 @@ async def upload_version(
     item_id: int,
     file: UploadFile,
     db: Session = Depends(get_db),
+    actor: Role = Depends(authenticate),
 ) -> models.Version:
     get_item_or_404(db, item_type, item_id)
     ext = Path(file.filename or "").suffix.lower()
@@ -85,6 +86,15 @@ async def upload_version(
         original_filename=(file.filename or "")[:MAX_ORIGINAL_FILENAME_LENGTH] or None,
     )
     db.add(version)
+    db.flush()
+    audit.record(
+        db,
+        actor,
+        "version.upload",
+        item_type,
+        item_id,
+        {"version_number": next_version, "version_id": version.id},
+    )
     db.commit()
     db.refresh(version)
     return version
