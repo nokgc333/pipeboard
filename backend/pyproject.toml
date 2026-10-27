@@ -12,3 +12,8 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 addopts = "--cov=app --cov-report=term-missing"
 testpaths = ["tests"]
+
+[tool.mutmut]
+source_paths = ["app/domain/status_transition.py", "app/domain/filenames.py"]
+pytest_add_cli_args_test_selection = ["tests/test_status_transition.py", "tests/test_filenames.py"]
+also_copy = ["app/"]

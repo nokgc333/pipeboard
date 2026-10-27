@@ -28,5 +28,5 @@ jobs:
       - run: isort --check .
       - run: flake8 app/ tests/
       - run: mypy app/
-      - run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+      - run: pytest --cov=app --cov-report=term-missing --cov-fail-under=95
       - run: pip-audit

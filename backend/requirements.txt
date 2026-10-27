@@ -13,5 +13,6 @@ flake8>=7.1
 isort>=5.13
 mypy>=1.11
 pip-audit>=2.7
+mutmut>=3.3
 requests>=2.32,<3
 types-requests
