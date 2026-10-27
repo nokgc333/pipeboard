@@ -14,7 +14,7 @@ from app.auth import load_auth_settings
 from app.cors import load_allowed_origins
 from app.errors import problem_details_handler
 from app.gate_settings import load_required_checks
-from app.routers import assets, audit_log, comments, shots, versions
+from app.routers import assets, audit_log, comments, hierarchy, shots, versions
 
 
 @asynccontextmanager
@@ -48,6 +48,8 @@ app.include_router(shots.router, prefix="/shots", tags=["shots"])
 app.include_router(assets.router, prefix="/assets", tags=["assets"])
 app.include_router(versions.router, prefix="/versions", tags=["versions"])
 app.include_router(comments.router, prefix="/comments", tags=["comments"])
+app.include_router(hierarchy.projects_router, prefix="/projects", tags=["projects"])
+app.include_router(hierarchy.sequences_router, prefix="/sequences", tags=["projects"])
 app.include_router(audit_log.router, prefix="/audit-log", tags=["audit"])
 
 

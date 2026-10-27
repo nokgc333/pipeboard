@@ -60,6 +60,7 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
         response: Response,
         q: str | None = Query(default=None, max_length=100),
         status_filter: schemas.ItemStatus | None = Query(default=None, alias="status"),
+        sequence_id: int | None = Query(default=None, ge=1),
         limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
         offset: int = Query(default=0, ge=0),
         db: Session = Depends(get_db),
@@ -69,6 +70,13 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
             query = query.filter(model.name.icontains(q, autoescape=True))
         if status_filter:
             query = query.filter(model.status == status_filter)
+        if sequence_id is not None:
+            if model is not models.Shot:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="sequence_id applies to shots only",
+                )
+            query = query.filter(models.Shot.sequence_id == sequence_id)
         response.headers["X-Total-Count"] = str(query.count())
         return cast(
             list[Item],
@@ -260,5 +268,38 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
             .order_by(models.Comment.created_at.asc())
             .all()
         )
+
+    if model is models.Shot:
+
+        @router.put(
+            "/{item_id}/sequence", response_model=schemas.ItemOut, dependencies=[requires_editor]
+        )
+        def assign_sequence(
+            item_id: int,
+            payload: schemas.SequenceAssign,
+            db: Session = Depends(get_db),
+            actor: Role = Depends(authenticate),
+        ) -> models.Shot | models.Asset:
+            item = _get_or_404(item_id, db)
+            if (
+                payload.sequence_id is not None
+                and db.get(models.Sequence, payload.sequence_id) is None
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Sequence {payload.sequence_id} not found",
+                )
+            audit.record(
+                db,
+                actor,
+                "shot.sequence",
+                item_type,
+                item_id,
+                {"from": getattr(item, "sequence_id", None), "to": payload.sequence_id},
+            )
+            setattr(item, "sequence_id", payload.sequence_id)
+            db.commit()
+            db.refresh(item)
+            return item
 
     return router

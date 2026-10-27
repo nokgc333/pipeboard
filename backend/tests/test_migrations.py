@@ -70,3 +70,24 @@ def test_a_url_with_a_percent_sign_in_the_password_survives_the_config() -> None
     url = "postgresql+psycopg://user:p%40ss@localhost/pipeboard"
 
     assert alembic_config(url).get_main_option("sqlalchemy.url") == url
+
+
+def test_existing_shots_survive_the_hierarchy_migration_with_no_sequence(tmp_path: Path) -> None:
+    from sqlalchemy import text
+
+    url = _url(tmp_path)
+    command.upgrade(alembic_config(url), "0003")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO shots (name, status, created_at, updated_at) "
+                "VALUES ('SHOT010', 'done', '2026-01-01', '2026-01-01')"
+            )
+        )
+
+    command.upgrade(alembic_config(url), "head")
+
+    with engine.connect() as connection:
+        row = connection.execute(text("SELECT name, status, sequence_id FROM shots")).one()
+    assert tuple(row) == ("SHOT010", "done", None)
