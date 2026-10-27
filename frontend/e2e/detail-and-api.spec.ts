@@ -46,7 +46,11 @@ test("画像をアップロードすると、バージョンが増える", async
     .getByLabel("バージョン画像を選択")
     .setInputFiles({ name: "frame.png", mimeType: "image/png", buffer: PNG_BYTES });
 
-  await expect(page.getByAltText(`v${before + 1}`)).toBeVisible();
+  const image = page.getByAltText(`v${before + 1}`);
+  await expect(image).toBeVisible();
+  await expect
+    .poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0))
+    .toBe(true);
 });
 
 test("対応していない拡張子のファイルは、画面で拒否される", async ({ page, request }) => {

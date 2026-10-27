@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -17,7 +17,7 @@ from app.cors import load_allowed_origins
 from app.database import get_db
 from app.errors import problem_details_handler
 from app.gate_settings import load_required_checks
-from app.routers import assets, audit_log, comments, hierarchy, shots, versions
+from app.routers import assets, audit_log, comments, hierarchy, shots, uploads, versions
 
 
 @asynccontextmanager
@@ -47,13 +47,19 @@ app.add_middleware(
     expose_headers=["X-Total-Count"],
 )
 
-app.include_router(shots.router, prefix="/shots", tags=["shots"])
-app.include_router(assets.router, prefix="/assets", tags=["assets"])
-app.include_router(versions.router, prefix="/versions", tags=["versions"])
-app.include_router(comments.router, prefix="/comments", tags=["comments"])
-app.include_router(hierarchy.projects_router, prefix="/projects", tags=["projects"])
-app.include_router(hierarchy.sequences_router, prefix="/sequences", tags=["projects"])
-app.include_router(audit_log.router, prefix="/audit-log", tags=["audit"])
+ROUTERS: list[tuple[APIRouter, str, str]] = [
+    (shots.router, "/shots", "shots"),
+    (assets.router, "/assets", "assets"),
+    (versions.router, "/versions", "versions"),
+    (comments.router, "/comments", "comments"),
+    (hierarchy.projects_router, "/projects", "projects"),
+    (hierarchy.sequences_router, "/sequences", "projects"),
+    (uploads.router, "/uploads", "uploads"),
+    (audit_log.router, "/audit-log", "audit"),
+]
+
+for router, prefix, tag in ROUTERS:
+    app.include_router(router, prefix=prefix, tags=[tag])
 
 
 @app.get("/health")

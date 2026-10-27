@@ -37,7 +37,7 @@ def _matches_signature(ext: str, contents: bytes) -> bool:
     return True
 
 
-def _upload_dir() -> Path:
+def upload_dir() -> Path:
     """アップロード先ディレクトリ。テストではPIPEBOARD_UPLOAD_DIRで一時ディレクトリに差し替える。"""
     return Path(os.environ.get("PIPEBOARD_UPLOAD_DIR", "uploads"))
 
@@ -71,9 +71,9 @@ async def upload_version(
         raise HTTPException(status_code=400, detail="File content does not match its type")
 
     saved_name = generate_safe_filename(file.filename or "", ext)
-    upload_dir = _upload_dir()
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    (upload_dir / saved_name).write_bytes(contents)
+    target_dir = upload_dir()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    (target_dir / saved_name).write_bytes(contents)
 
     next_version = (
         db.query(models.Version).filter_by(item_type=item_type, item_id=item_id).count() + 1
