@@ -21,17 +21,29 @@ ItemModel = type[models.Shot] | type[models.Asset]
 Item = models.Shot | models.Asset
 
 
+ITEM_MODELS: dict[str, ItemModel] = {"shot": models.Shot, "asset": models.Asset}
+
+
+def get_item_or_404(db: Session, item_type: str, item_id: int) -> Item:
+    """item_type の表に item_id の行があれば返し、なければ 404 にする。
+
+    versions / comments は item_type + item_id で対象を指す(DB の外部キーは張らない、ADR-0002)ため、
+    存在の確認はアプリ層で行う。
+    """
+    item = db.get(ITEM_MODELS[item_type], item_id)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{item_type.capitalize()} {item_id} not found",
+        )
+    return cast(Item, item)
+
+
 def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
     router = APIRouter()
 
     def _get_or_404(item_id: int, db: Session) -> Item:
-        item = db.get(model, item_id)
-        if item is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"{item_type.capitalize()} {item_id} not found",
-            )
-        return cast(Item, item)
+        return get_item_or_404(db, item_type, item_id)
 
     @router.get("", response_model=list[schemas.ItemOut], dependencies=[requires_viewer])
     def list_items(db: Session = Depends(get_db)) -> list[Item]:
