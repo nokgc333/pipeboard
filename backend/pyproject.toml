@@ -14,6 +14,14 @@ addopts = "--cov=app --cov-report=term-missing"
 testpaths = ["tests"]
 
 [tool.mutmut]
-source_paths = ["app/domain/status_transition.py", "app/domain/filenames.py"]
-pytest_add_cli_args_test_selection = ["tests/test_status_transition.py", "tests/test_filenames.py"]
+source_paths = [
+    "app/domain/status_transition.py",
+    "app/domain/filenames.py",
+    "app/domain/publish_gate.py",
+]
+pytest_add_cli_args_test_selection = [
+    "tests/test_status_transition.py",
+    "tests/test_filenames.py",
+    "tests/test_publish_gate.py",
+]
 also_copy = ["app/"]
