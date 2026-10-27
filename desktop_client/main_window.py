@@ -1,6 +1,6 @@
 """PipeBoard mini のPySide6デスクトップクライアント メインウィンドウ。
 
-`api_client: PipeBoardApiClient`を注入されるだけで動作する疎結合設計にすることで、
+`api_client: ShotsApi`を注入されるだけで動作する疎結合設計にすることで、
 `QT_QPA_PLATFORM=offscreen`のヘッドレスQApplication上で本物のPySide6ウィジェットとして
 テストできる（scene_doctor/ui/panel.py, tests/test_panel.pyと同じ手法）。requestsは
 直接呼ばず、必ずapi_client経由でバックエンドと通信する。
@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -24,21 +24,27 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from desktop_client.api_client import ApiError, PipeBoardApiClient
+from desktop_client.api_client import ApiError
 from desktop_client.view_model import STATUS_LABELS, STATUS_ORDER, group_shots_by_status
 
 # QListWidgetItemにショットIDを紐付けるためのカスタムデータロール
 SHOT_ID_ROLE = int(Qt.ItemDataRole.UserRole)
 
 
+class ShotsApi(Protocol):
+    def list_shots(self) -> list[dict[str, Any]]: ...
+
+    def update_shot_status(self, shot_id: int, status: str) -> dict[str, Any]: ...
+
+
 class PipeBoardMainWindow(QMainWindow):
     """ステータスごとの列（QListWidget）でショット一覧を表示するカンバン風メインウィンドウ。
 
     Args:
-        api_client: バックエンドと通信するPipeBoardApiClient（テストではfakeを注入する）。
+        api_client: バックエンドと通信するShotsApi(PipeBoardApiClientが満たす)（テストではfakeを注入する）。
     """
 
-    def __init__(self, api_client: PipeBoardApiClient, parent: QWidget | None = None) -> None:
+    def __init__(self, api_client: ShotsApi, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("PipeBoard mini")
 

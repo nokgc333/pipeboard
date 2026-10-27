@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from desktop_client import app as app_module
 
 
-def test_main_uses_default_base_url_when_env_not_set(monkeypatch) -> None:
+def test_main_uses_default_base_url_when_env_not_set(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("PIPEBOARD_API_BASE_URL", raising=False)
     fake_qapp = MagicMock()
     fake_qapp.exec.return_value = 0
@@ -30,7 +32,7 @@ def test_main_uses_default_base_url_when_env_not_set(monkeypatch) -> None:
     assert exit_code == 0
 
 
-def test_main_uses_env_base_url_when_set(monkeypatch) -> None:
+def test_main_uses_env_base_url_when_set(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PIPEBOARD_API_BASE_URL", "http://example.com:9000")
     fake_qapp = MagicMock()
     fake_qapp.exec.return_value = 0
@@ -45,7 +47,7 @@ def test_main_uses_env_base_url_when_set(monkeypatch) -> None:
     api_cls.assert_called_once_with("http://example.com:9000")
 
 
-def test_main_returns_qapplication_exec_code(monkeypatch) -> None:
+def test_main_returns_qapplication_exec_code(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("PIPEBOARD_API_BASE_URL", raising=False)
     fake_qapp = MagicMock()
     fake_qapp.exec.return_value = 1
