@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { BoardItem, Status } from "@/domain/status/status";
-import { STATUS_ORDER, groupByStatus } from "@/domain/status/status";
+import { STATUS_LABELS, STATUS_ORDER, groupByStatus } from "@/domain/status/status";
 import { ApiError, listAssets, listShots, updateStatus } from "@/lib/api-client";
 import { KanbanColumn } from "./KanbanColumn";
 
@@ -15,6 +15,7 @@ export interface KanbanBoardProps {
 export function KanbanBoard({ baseUrl }: KanbanBoardProps) {
   const [items, setItems] = useState<BoardItem[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [announcement, setAnnouncement] = useState("");
 
   const load = useCallback(async () => {
     setLoadState("loading");
@@ -39,18 +40,21 @@ export function KanbanBoard({ baseUrl }: KanbanBoardProps) {
     (id: number, kind: "shot" | "asset", nextStatus: Status) => {
       // 楽観的更新: 先にUIを更新し、失敗したら元に戻す（要件定義書FR-001シナリオ）
       let previous: Status | undefined;
+      let name = "";
       setItems((current) =>
         current.map((item) => {
           if (item.id === id && item.kind === kind) {
             previous = item.status;
+            name = item.name;
             return { ...item, status: nextStatus };
           }
           return item;
         }),
       );
 
-      updateStatus(baseUrl, kind, id, nextStatus).catch((err: unknown) => {
-        if (err instanceof ApiError || err) {
+      updateStatus(baseUrl, kind, id, nextStatus)
+        .then(() => setAnnouncement(`${name}を「${STATUS_LABELS[nextStatus]}」に変更しました`))
+        .catch((err: unknown) => {
           setItems((current) =>
             current.map((item) =>
               item.id === id && item.kind === kind && previous
@@ -58,8 +62,9 @@ export function KanbanBoard({ baseUrl }: KanbanBoardProps) {
                 : item,
             ),
           );
-        }
-      });
+          const reason = err instanceof ApiError ? `（${err.message}）` : "";
+          setAnnouncement(`${name}の更新に失敗したため元に戻しました${reason}`);
+        });
     },
     [baseUrl],
   );
@@ -90,15 +95,20 @@ export function KanbanBoard({ baseUrl }: KanbanBoardProps) {
   const grouped = groupByStatus(items);
 
   return (
-    <div className="flex gap-4 overflow-x-auto p-6">
-      {STATUS_ORDER.map((status) => (
-        <KanbanColumn
-          key={status}
-          status={status}
-          items={grouped[status]}
-          onChangeStatus={handleChangeStatus}
-        />
-      ))}
+    <div className="p-6">
+      <p role="status" aria-live="polite" className="mb-3 min-h-5 text-sm text-slate-700">
+        {announcement}
+      </p>
+      <div className="flex gap-4 overflow-x-auto">
+        {STATUS_ORDER.map((status) => (
+          <KanbanColumn
+            key={status}
+            status={status}
+            items={grouped[status]}
+            onChangeStatus={handleChangeStatus}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -85,4 +85,44 @@ describe("KanbanBoard", () => {
       expect(screen.getByLabelText(/SHOT010.*未着手/)).toBeInTheDocument();
     });
   });
+
+  it("ステータス変更に成功すると、状況をスクリーンリーダー向けに通知する", async () => {
+    mockedListShots.mockResolvedValue([item(1, "SHOT010", "not_started")]);
+    mockedListAssets.mockResolvedValue([]);
+    mockedUpdateStatus.mockResolvedValue(item(1, "SHOT010", "in_progress"));
+    const user = userEvent.setup();
+
+    render(<KanbanBoard baseUrl="http://localhost:8000" />);
+    await screen.findByText("SHOT010");
+    await user.selectOptions(screen.getByLabelText(/ステータス変更/), "in_progress");
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("SHOT010を「作業中」に変更しました");
+    expect(status).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("失敗したときは、元に戻したことと理由を通知する", async () => {
+    mockedListShots.mockResolvedValue([item(1, "SHOT010", "not_started")]);
+    mockedListAssets.mockResolvedValue([]);
+    mockedUpdateStatus.mockRejectedValue(new apiClient.ApiError(409, "Missing checks: unibridge"));
+    const user = userEvent.setup();
+
+    render(<KanbanBoard baseUrl="http://localhost:8000" />);
+    await screen.findByText("SHOT010");
+    await user.selectOptions(screen.getByLabelText(/ステータス変更/), "done");
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("SHOT010の更新に失敗したため元に戻しました");
+    expect(status).toHaveTextContent("Missing checks: unibridge");
+  });
+
+  it("通知の領域は、変更の前から存在し、空である", async () => {
+    mockedListShots.mockResolvedValue([item(1, "SHOT010", "not_started")]);
+    mockedListAssets.mockResolvedValue([]);
+
+    render(<KanbanBoard baseUrl="http://localhost:8000" />);
+    await screen.findByText("SHOT010");
+
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
 });

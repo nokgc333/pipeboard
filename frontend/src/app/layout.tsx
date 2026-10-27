@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="border-b border-slate-200 bg-white px-6 py-4">
           <h1 className="text-lg font-bold text-slate-800">PipeBoard mini</h1>
         </header>
-        {children}
+        <main>{children}</main>
       </body>
     </html>
   );
