@@ -21,7 +21,9 @@ from app.auth import (
     requires_viewer,
 )
 from app.database import get_db
+from app.domain.publish_gate import CheckSummary, evaluate_gate
 from app.domain.status_transition import is_valid_status
+from app.gate_settings import load_required_checks
 
 DEFAULT_PAGE_SIZE = 500
 MAX_PAGE_SIZE = 500
@@ -95,6 +97,18 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
         db.refresh(item)
         return item
 
+    def _latest_checks(db: Session, item_id: int) -> dict[str, CheckSummary]:
+        latest: dict[str, CheckSummary] = {}
+        rows = (
+            db.query(models.CheckResult)
+            .filter_by(item_type=item_type, item_id=item_id)
+            .order_by(models.CheckResult.id.desc())
+            .all()
+        )
+        for row in rows:
+            latest.setdefault(row.tool, CheckSummary(tool=row.tool, passed=row.passed))
+        return latest
+
     @router.get("/{item_id}", response_model=schemas.ItemOut, dependencies=[requires_viewer])
     def get_item(item_id: int, db: Session = Depends(get_db)) -> models.Shot | models.Asset:
         return _get_or_404(item_id, db)
@@ -135,6 +149,11 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid status: {payload.status}",
             )
+        decision = evaluate_gate(
+            payload.status, load_required_checks(), _latest_checks(db, item_id)
+        )
+        if not decision.allowed:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(decision.reason))
         audit.record(
             db,
             actor,
@@ -159,8 +178,60 @@ def create_item_router(model: ItemModel, item_type: str) -> APIRouter:
         # DBレベルのFK制約がないため（ADR-0002）、アプリ層で明示的にカスケード削除する
         db.query(models.Version).filter_by(item_type=item_type, item_id=item_id).delete()
         db.query(models.Comment).filter_by(item_type=item_type, item_id=item_id).delete()
+        db.query(models.CheckResult).filter_by(item_type=item_type, item_id=item_id).delete()
         db.delete(item)
         db.commit()
+
+    @router.post(
+        "/{item_id}/checks",
+        response_model=schemas.CheckOut,
+        status_code=status.HTTP_201_CREATED,
+        dependencies=[requires_editor],
+    )
+    def submit_check(
+        item_id: int,
+        payload: schemas.CheckReportIn,
+        db: Session = Depends(get_db),
+        actor: Role = Depends(authenticate),
+    ) -> models.CheckResult:
+        _get_or_404(item_id, db)
+        result = models.CheckResult(
+            item_type=item_type,
+            item_id=item_id,
+            tool=payload.tool,
+            subject=payload.subject,
+            passed=not payload.has_errors,
+            error_count=sum(f.severity == "error" for f in payload.findings),
+            warning_count=sum(f.severity == "warning" for f in payload.findings),
+            report=payload.model_dump_json(),
+        )
+        db.add(result)
+        db.flush()
+        audit.record(
+            db,
+            actor,
+            f"{item_type}.check",
+            item_type,
+            item_id,
+            {"tool": payload.tool, "passed": result.passed, "check_id": result.id},
+        )
+        db.commit()
+        db.refresh(result)
+        return result
+
+    @router.get(
+        "/{item_id}/checks",
+        response_model=list[schemas.CheckOut],
+        dependencies=[requires_viewer],
+    )
+    def list_checks(item_id: int, db: Session = Depends(get_db)) -> list[models.CheckResult]:
+        _get_or_404(item_id, db)
+        return (
+            db.query(models.CheckResult)
+            .filter_by(item_type=item_type, item_id=item_id)
+            .order_by(models.CheckResult.id.desc())
+            .all()
+        )
 
     @router.get(
         "/{item_id}/versions",

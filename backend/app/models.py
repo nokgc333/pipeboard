@@ -72,3 +72,21 @@ class AuditLog(Base):
     item_id: Mapped[int] = mapped_column()
     detail: Mapped[str | None] = mapped_column(Text(), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)
+
+
+class CheckResult(Base):
+    """scene-doctor / unibridge などの検査結果(共通レポート形式)。公開ゲートの入力になる。"""
+
+    __tablename__ = "check_results"
+    __table_args__ = (Index("idx_checks_item", "item_type", "item_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    item_type: Mapped[str] = mapped_column(String(10))
+    item_id: Mapped[int] = mapped_column()
+    tool: Mapped[str] = mapped_column(String(30))
+    subject: Mapped[str] = mapped_column(String(255))
+    passed: Mapped[bool] = mapped_column()
+    error_count: Mapped[int] = mapped_column()
+    warning_count: Mapped[int] = mapped_column()
+    report: Mapped[str] = mapped_column(Text())
+    created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)

@@ -41,6 +41,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assets/{item_id}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Checks */
+        get: operations["list_checks_assets__item_id__checks_get"];
+        put?: never;
+        /** Submit Check */
+        post: operations["submit_check_assets__item_id__checks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets/{item_id}/comments": {
         parameters: {
             query?: never;
@@ -180,6 +198,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shots/{item_id}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Checks */
+        get: operations["list_checks_shots__item_id__checks_get"];
+        put?: never;
+        /** Submit Check */
+        post: operations["submit_check_shots__item_id__checks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shots/{item_id}/comments": {
         parameters: {
             query?: never;
@@ -277,6 +313,54 @@ export interface components {
             /** File */
             file: string;
         };
+        /** CheckOut */
+        CheckOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Count */
+            error_count: number;
+            /** Id */
+            id: number;
+            /** Item Id */
+            item_id: number;
+            /**
+             * Item Type
+             * @enum {string}
+             */
+            item_type: "shot" | "asset";
+            /** Passed */
+            passed: boolean;
+            /** Subject */
+            subject: string;
+            /** Tool */
+            tool: string;
+            /** Warning Count */
+            warning_count: number;
+        };
+        /** CheckReportIn */
+        CheckReportIn: {
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Has Errors */
+            has_errors: boolean;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: "1";
+            /** Subject */
+            subject: string;
+            /** Tool */
+            tool: string;
+        };
         /** CommentCreate */
         CommentCreate: {
             /** Body */
@@ -311,6 +395,20 @@ export interface components {
             item_type: "shot" | "asset";
             /** Tag */
             tag: string | null;
+        };
+        /** Finding */
+        Finding: {
+            /** Message */
+            message: string;
+            /** Rule */
+            rule: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning" | "info";
+            /** Target */
+            target: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -549,6 +647,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_checks_assets__item_id__checks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_check_assets__item_id__checks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -898,6 +1062,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_checks_shots__item_id__checks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_check_shots__item_id__checks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckOut"];
+                };
             };
             /** @description Validation Error */
             422: {
