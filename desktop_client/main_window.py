@@ -29,6 +29,7 @@ from desktop_client.view_model import STATUS_LABELS, STATUS_ORDER, group_shots_b
 
 # QListWidgetItemにショットIDを紐付けるためのカスタムデータロール
 SHOT_ID_ROLE = int(Qt.ItemDataRole.UserRole)
+ERROR_COLOR = "#b00020"
 
 
 class ShotsApi(Protocol):
@@ -61,6 +62,8 @@ class PipeBoardMainWindow(QMainWindow):
 
         toolbar = QHBoxLayout()
         self.reload_button = QPushButton("更新", central)
+        self.reload_button.setShortcut("F5")
+        self.reload_button.setToolTip("一覧を再取得する (F5)")
         toolbar.addWidget(self.reload_button)
         toolbar.addStretch()
         layout.addLayout(toolbar)
@@ -70,6 +73,7 @@ class PipeBoardMainWindow(QMainWindow):
             group = QGroupBox(STATUS_LABELS[status], central)
             group_layout = QVBoxLayout(group)
             list_widget = QListWidget(group)
+            list_widget.setAccessibleName(f"{STATUS_LABELS[status]}のショット一覧")
             group_layout.addWidget(list_widget)
             columns_layout.addWidget(group)
             self.status_lists[status] = list_widget
@@ -80,12 +84,16 @@ class PipeBoardMainWindow(QMainWindow):
         self.status_combo = QComboBox(central)
         for status in STATUS_ORDER:
             self.status_combo.addItem(STATUS_LABELS[status], status)
+        self.status_combo.setAccessibleName("変更後のステータス")
         self.apply_status_button = QPushButton("適用", central)
+        self.apply_status_button.setShortcut("Ctrl+Return")
+        self.apply_status_button.setToolTip("選択中のショットに適用する (Ctrl+Enter)")
         status_change_bar.addWidget(self.status_combo)
         status_change_bar.addWidget(self.apply_status_button)
         layout.addLayout(status_change_bar)
 
         self.status_label = QLabel("0 shot(s)", central)
+        self.status_label.setAccessibleName("状況メッセージ")
         layout.addWidget(self.status_label)
 
         central.setLayout(layout)
@@ -102,9 +110,13 @@ class PipeBoardMainWindow(QMainWindow):
         try:
             self._shots = self._api_client.list_shots()
         except ApiError as exc:
-            self.status_label.setText(f"読み込みエラー: {exc.title}")
+            self._show_error(f"読み込みエラー: {exc.title}")
             return
         self._rebuild_lists()
+
+    def _show_error(self, message: str) -> None:
+        self.status_label.setStyleSheet(f"color: {ERROR_COLOR};")
+        self.status_label.setText(message)
 
     def _rebuild_lists(self) -> None:
         grouped = group_shots_by_status(self._shots)
@@ -114,6 +126,7 @@ class PipeBoardMainWindow(QMainWindow):
                 item = QListWidgetItem(shot["name"])
                 item.setData(SHOT_ID_ROLE, shot["id"])
                 list_widget.addItem(item)
+        self.status_label.setStyleSheet("")
         self.status_label.setText(f"{len(self._shots)} shot(s)")
 
     def _selected_shot_id(self) -> int | None:
@@ -135,13 +148,13 @@ class PipeBoardMainWindow(QMainWindow):
     def _on_apply_status_clicked(self) -> None:
         shot_id = self._selected_shot_id()
         if shot_id is None:
-            self.status_label.setText("ショットが選択されていません")
+            self._show_error("ショットが選択されていません")
             return
 
         new_status = self.status_combo.currentData()
         try:
             self._api_client.update_shot_status(shot_id, new_status)
         except ApiError as exc:
-            self.status_label.setText(f"更新エラー: {exc.title}")
+            self._show_error(f"更新エラー: {exc.title}")
             return
         self.reload_shots()

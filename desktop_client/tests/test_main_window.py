@@ -191,3 +191,48 @@ class TestStatusChange:
         window.apply_status_button.click()
 
         assert "Invalid status" in window.status_label.text()
+
+
+class TestKeyboardAndAccessibility:
+    def test_the_reload_and_apply_buttons_have_keyboard_shortcuts(self, qtbot: QtBot) -> None:
+        window = _make_window(qtbot)
+
+        assert window.reload_button.shortcut().toString() == "F5"
+        assert window.apply_status_button.shortcut().toString() == "Ctrl+Return"
+
+    def test_each_status_list_is_named_for_screen_readers(self, qtbot: QtBot) -> None:
+        window = _make_window(qtbot)
+
+        assert window.status_lists["in_progress"].accessibleName() == "作業中のショット一覧"
+        assert window.status_lists["done"].accessibleName() == "完了のショット一覧"
+
+    def test_the_status_combo_and_the_message_are_named(self, qtbot: QtBot) -> None:
+        window = _make_window(qtbot)
+
+        assert window.status_combo.accessibleName() == "変更後のステータス"
+        assert window.status_label.accessibleName() == "状況メッセージ"
+
+    def test_an_error_message_is_shown_in_the_error_color_and_cleared_on_success(
+        self, qtbot: QtBot
+    ) -> None:
+        fake = FakeApiClient(shots=_sample_shots(), raise_on_list=ApiError(500, "Server error"))
+        window = _make_window(qtbot, fake)
+
+        window.reload_shots()
+
+        assert "読み込みエラー" in window.status_label.text()
+        assert "#b00020" in window.status_label.styleSheet()
+
+        fake._raise_on_list = None
+        window.reload_shots()
+
+        assert window.status_label.styleSheet() == ""
+
+    def test_the_apply_error_is_also_in_the_error_color(self, qtbot: QtBot) -> None:
+        window = _make_window(qtbot, FakeApiClient(shots=_sample_shots()))
+        window.reload_shots()
+
+        window._on_apply_status_clicked()
+
+        assert "ショットが選択されていません" in window.status_label.text()
+        assert "#b00020" in window.status_label.styleSheet()
