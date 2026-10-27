@@ -8,10 +8,13 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app import rate_limit, webhooks
 from app.auth import load_auth_settings
 from app.cors import load_allowed_origins
+from app.database import get_db
 from app.errors import problem_details_handler
 from app.gate_settings import load_required_checks
 from app.routers import assets, audit_log, comments, hierarchy, shots, versions
@@ -28,7 +31,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="PipeBoard mini API",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
     dependencies=[Depends(rate_limit.enforce_rate_limit)],
 )
@@ -51,6 +54,15 @@ app.include_router(comments.router, prefix="/comments", tags=["comments"])
 app.include_router(hierarchy.projects_router, prefix="/projects", tags=["projects"])
 app.include_router(hierarchy.sequences_router, prefix="/sequences", tags=["projects"])
 app.include_router(audit_log.router, prefix="/audit-log", tags=["audit"])
+
+
+@app.get("/health")
+def health(db: Session = Depends(get_db)) -> dict[str, str]:
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001 - どんな接続障害でも 503 にする
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
+    return {"status": "ok", "database": "ok", "version": app.version}
 
 
 @app.get("/healthz")

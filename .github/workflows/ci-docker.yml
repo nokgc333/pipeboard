@@ -1,0 +1,27 @@
+name: CI Docker
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", "frontend/**", "docker-compose.yml", ".github/workflows/ci-docker.yml"]
+  pull_request:
+    paths: ["backend/**", "frontend/**", "docker-compose.yml", ".github/workflows/ci-docker.yml"]
+  workflow_dispatch:
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and start the stack
+        run: docker compose up -d --build --wait --wait-timeout 180
+      - name: The API is ready and the database is reachable
+        run: curl --fail --silent http://127.0.0.1:8000/health
+      - name: The demo data was seeded
+        run: curl --fail --silent http://127.0.0.1:8000/shots | grep -q SHOT010
+      - name: The board is served
+        run: curl --fail --silent http://127.0.0.1:3000/ | grep -q "PipeBoard mini"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - run: docker compose down -v

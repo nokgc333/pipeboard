@@ -12,7 +12,7 @@ WINDOW_SECONDS = 60.0
 DEFAULT_READ_PER_MINUTE = 300
 DEFAULT_WRITE_PER_MINUTE = 60
 READ_METHODS = {"GET", "HEAD", "OPTIONS"}
-EXEMPT_PATHS = {"/healthz"}
+EXEMPT_PATHS = {"/healthz", "/health"}
 
 
 class SlidingWindowLimiter:
