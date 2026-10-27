@@ -3,6 +3,13 @@
 from app.schemas.audit import AuditLogOut
 from app.schemas.checks import CheckOut, CheckReportIn
 from app.schemas.comments import CommentCreate, CommentOut
+from app.schemas.hierarchy import (
+    ProjectCreate,
+    ProjectOut,
+    SequenceAssign,
+    SequenceCreate,
+    SequenceOut,
+)
 from app.schemas.items import (
     ItemCreate,
     ItemOut,
@@ -14,6 +21,11 @@ from app.schemas.items import (
 from app.schemas.versions import VersionOut
 
 __all__ = [
+    "ProjectCreate",
+    "ProjectOut",
+    "SequenceAssign",
+    "SequenceCreate",
+    "SequenceOut",
     "CheckOut",
     "CheckReportIn",
     "AuditLogOut",

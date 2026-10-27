@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Index, String, Text
+from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -24,8 +24,30 @@ class _ItemColumns:
     updated_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now, onupdate=_utc_now)
 
 
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)
+
+
+class Sequence(Base):
+    __tablename__ = "sequences"
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_sequences_project_name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime.datetime] = mapped_column(default=_utc_now)
+
+
 class Shot(_ItemColumns, Base):
     __tablename__ = "shots"
+
+    sequence_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sequences.id", name="fk_shots_sequence_id"), nullable=True, index=True
+    )
 
 
 class Asset(_ItemColumns, Base):

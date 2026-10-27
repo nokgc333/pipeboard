@@ -25,6 +25,7 @@ class ItemOut(BaseModel):
     id: int
     name: str
     status: ItemStatus
+    sequence_id: int | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 

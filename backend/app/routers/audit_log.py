@@ -15,7 +15,7 @@ router = APIRouter()
 @router.get("", response_model=list[schemas.AuditLogOut], dependencies=[requires_admin])
 def list_audit_log(
     response: Response,
-    item_type: schemas.ItemType | None = None,
+    item_type: str | None = Query(default=None, max_length=10),
     item_id: int | None = Query(default=None, ge=1),
     action: str | None = Query(default=None, max_length=40),
     limit: int = Query(default=100, ge=1, le=500),
