@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from pytestqt.qtbot import QtBot
+
 from desktop_client.api_client import ApiError
 from desktop_client.main_window import PipeBoardMainWindow
 
@@ -44,7 +46,7 @@ def _sample_shots() -> list[dict[str, Any]]:
     ]
 
 
-def _make_window(qtbot, api_client: FakeApiClient | None = None) -> PipeBoardMainWindow:
+def _make_window(qtbot: QtBot, api_client: FakeApiClient | None = None) -> PipeBoardMainWindow:
     window = PipeBoardMainWindow(api_client=api_client or FakeApiClient())
     qtbot.addWidget(window)
     window.show()
@@ -52,12 +54,12 @@ def _make_window(qtbot, api_client: FakeApiClient | None = None) -> PipeBoardMai
 
 
 class TestConstruction:
-    def test_window_constructs_with_empty_lists(self, qtbot) -> None:
+    def test_window_constructs_with_empty_lists(self, qtbot: QtBot) -> None:
         window = _make_window(qtbot)
 
         assert all(lw.count() == 0 for lw in window.status_lists.values())
 
-    def test_window_has_one_list_per_status(self, qtbot) -> None:
+    def test_window_has_one_list_per_status(self, qtbot: QtBot) -> None:
         window = _make_window(qtbot)
 
         assert set(window.status_lists.keys()) == {
@@ -67,14 +69,14 @@ class TestConstruction:
             "done",
         }
 
-    def test_status_label_shows_zero_initially(self, qtbot) -> None:
+    def test_status_label_shows_zero_initially(self, qtbot: QtBot) -> None:
         window = _make_window(qtbot)
 
         assert "0" in window.status_label.text()
 
 
 class TestReload:
-    def test_reload_button_click_invokes_list_shots(self, qtbot) -> None:
+    def test_reload_button_click_invokes_list_shots(self, qtbot: QtBot) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
 
@@ -85,7 +87,7 @@ class TestReload:
         assert window.status_lists["done"].count() == 1
         assert window.status_lists["in_review"].count() == 0
 
-    def test_reload_populates_item_text_with_shot_name(self, qtbot) -> None:
+    def test_reload_populates_item_text_with_shot_name(self, qtbot: QtBot) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
 
@@ -93,7 +95,7 @@ class TestReload:
 
         assert window.status_lists["not_started"].item(0).text() == "SHOT010"
 
-    def test_reload_updates_status_label_with_total_count(self, qtbot) -> None:
+    def test_reload_updates_status_label_with_total_count(self, qtbot: QtBot) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
 
@@ -101,7 +103,7 @@ class TestReload:
 
         assert "3" in window.status_label.text()
 
-    def test_reload_clears_previous_items_before_repopulating(self, qtbot) -> None:
+    def test_reload_clears_previous_items_before_repopulating(self, qtbot: QtBot) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
         window.reload_button.click()
@@ -112,7 +114,7 @@ class TestReload:
         assert window.status_lists["not_started"].count() == 0
         assert window.status_lists["done"].count() == 1
 
-    def test_reload_shows_error_message_when_api_error_raised(self, qtbot) -> None:
+    def test_reload_shows_error_message_when_api_error_raised(self, qtbot: QtBot) -> None:
         fake = FakeApiClient(raise_on_list=ApiError(500, "Internal Server Error"))
         window = _make_window(qtbot, fake)
 
@@ -122,7 +124,9 @@ class TestReload:
 
 
 class TestStatusChange:
-    def test_selecting_shot_and_applying_status_calls_update_shot_status(self, qtbot) -> None:
+    def test_selecting_shot_and_applying_status_calls_update_shot_status(
+        self, qtbot: QtBot
+    ) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
         window.reload_button.click()
@@ -135,7 +139,7 @@ class TestStatusChange:
 
         assert fake.update_calls == [(1, "done")]
 
-    def test_apply_status_reloads_shots_after_success(self, qtbot) -> None:
+    def test_apply_status_reloads_shots_after_success(self, qtbot: QtBot) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
         window.reload_button.click()
@@ -149,7 +153,7 @@ class TestStatusChange:
         assert window.status_lists["done"].count() == 2
 
     def test_apply_status_without_selection_shows_message_and_does_not_call_api(
-        self, qtbot
+        self, qtbot: QtBot
     ) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
@@ -160,7 +164,7 @@ class TestStatusChange:
         assert fake.update_calls == []
         assert "選択" in window.status_label.text()
 
-    def test_selecting_item_in_one_list_clears_selection_in_others(self, qtbot) -> None:
+    def test_selecting_item_in_one_list_clears_selection_in_others(self, qtbot: QtBot) -> None:
         fake = FakeApiClient(shots=_sample_shots())
         window = _make_window(qtbot, fake)
         window.reload_button.click()
@@ -173,7 +177,7 @@ class TestStatusChange:
         assert not_started_list.selectedItems() == []
         assert len(in_progress_list.selectedItems()) == 1
 
-    def test_apply_status_shows_error_message_when_api_error_raised(self, qtbot) -> None:
+    def test_apply_status_shows_error_message_when_api_error_raised(self, qtbot: QtBot) -> None:
         class FailingApiClient(FakeApiClient):
             def update_shot_status(self, shot_id: int, status: str) -> dict[str, Any]:
                 raise ApiError(400, "Invalid status: bogus")
