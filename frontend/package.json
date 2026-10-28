@@ -34,7 +34,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.5.28",
+    "eslint-config-next": "^16.4.3",
     "happy-dom": "^21.0.4",
     "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.16",
