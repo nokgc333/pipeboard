@@ -30,12 +30,6 @@ updates:
       # The runtime is Node 22 (.nvmrc), so the type definitions stay on 22.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
-      # Next.js 16 is a framework migration, done on purpose, not by a bot; eslint-config-next
-      # must match the Next.js major.
-      - dependency-name: next
-        update-types: ["version-update:semver-major"]
-      - dependency-name: eslint-config-next
-        update-types: ["version-update:semver-major"]
       # The ESLint plugins in eslint-config-next do not support ESLint 10 yet, and
       # typescript-eslint does not support TypeScript 7 yet.
       - dependency-name: eslint
