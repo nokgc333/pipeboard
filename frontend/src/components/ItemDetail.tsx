@@ -24,33 +24,58 @@ export interface ItemDetailProps {
 
 type LoadState = "loading" | "error" | "ready";
 
+interface Detail {
+  item: ItemDto | null;
+  versions: VersionDto[];
+  comments: CommentDto[];
+}
+
+/** Read everything the page shows. It sets no state, so an effect can call it safely. */
+async function fetchDetail(
+  baseUrl: string,
+  itemType: "shot" | "asset",
+  itemId: number,
+): Promise<Detail> {
+  const list = itemType === "shot" ? await listShots(baseUrl) : await listAssets(baseUrl);
+  const item = list.find((i) => i.id === itemId) ?? null;
+  const [versions, comments] = await Promise.all([
+    listVersions(baseUrl, itemType, itemId),
+    listComments(baseUrl, itemType, itemId),
+  ]);
+  return { item, versions, comments };
+}
+
 export function ItemDetail({ baseUrl, itemType, itemId }: ItemDetailProps) {
   const [item, setItem] = useState<ItemDto | null>(null);
   const [versions, setVersions] = useState<VersionDto[]>([]);
   const [comments, setComments] = useState<CommentDto[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
-  const load = useCallback(async () => {
-    setLoadState("loading");
-    try {
-      const list = itemType === "shot" ? await listShots(baseUrl) : await listAssets(baseUrl);
-      const found = list.find((i) => i.id === itemId) ?? null;
-      const [versionList, commentList] = await Promise.all([
-        listVersions(baseUrl, itemType, itemId),
-        listComments(baseUrl, itemType, itemId),
-      ]);
-      setItem(found);
-      setVersions(versionList);
-      setComments(commentList);
-      setLoadState("ready");
-    } catch {
-      setLoadState("error");
-    }
-  }, [baseUrl, itemType, itemId]);
+  // Bumped by "retry" to run the load again.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let isCurrent = true;
+    fetchDetail(baseUrl, itemType, itemId)
+      .then((detail) => {
+        if (!isCurrent) return;
+        setItem(detail.item);
+        setVersions(detail.versions);
+        setComments(detail.comments);
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (isCurrent) setLoadState("error");
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [baseUrl, itemType, itemId, attempt]);
+
+  const retry = useCallback(() => {
+    setLoadState("loading");
+    setAttempt((n) => n + 1);
+  }, []);
 
   if (loadState === "loading") {
     return <p className="p-6 text-slate-500">読み込み中…</p>;
@@ -63,7 +88,7 @@ export function ItemDetail({ baseUrl, itemType, itemId }: ItemDetailProps) {
         <button
           type="button"
           className="mt-2 rounded bg-red-600 px-3 py-1 text-sm text-white"
-          onClick={() => void load()}
+          onClick={retry}
         >
           再試行
         </button>

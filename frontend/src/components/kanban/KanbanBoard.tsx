@@ -8,6 +8,15 @@ import { KanbanColumn } from "./KanbanColumn";
 
 type LoadState = "loading" | "error" | "ready";
 
+/** Read every shot and asset as board items. It sets no state, so an effect can call it safely. */
+async function fetchBoard(baseUrl: string): Promise<BoardItem[]> {
+  const [shots, assets] = await Promise.all([listShots(baseUrl), listAssets(baseUrl)]);
+  return [
+    ...shots.map((s) => ({ ...s, kind: "shot" as const })),
+    ...assets.map((a) => ({ ...a, kind: "asset" as const })),
+  ];
+}
+
 export interface KanbanBoardProps {
   baseUrl: string;
 }
@@ -17,24 +26,29 @@ export function KanbanBoard({ baseUrl }: KanbanBoardProps) {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [announcement, setAnnouncement] = useState("");
 
-  const load = useCallback(async () => {
-    setLoadState("loading");
-    try {
-      const [shots, assets] = await Promise.all([listShots(baseUrl), listAssets(baseUrl)]);
-      const merged: BoardItem[] = [
-        ...shots.map((s) => ({ ...s, kind: "shot" as const })),
-        ...assets.map((a) => ({ ...a, kind: "asset" as const })),
-      ];
-      setItems(merged);
-      setLoadState("ready");
-    } catch {
-      setLoadState("error");
-    }
-  }, [baseUrl]);
+  // Bumped by "retry" to run the load again.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let isCurrent = true;
+    fetchBoard(baseUrl)
+      .then((merged) => {
+        if (!isCurrent) return;
+        setItems(merged);
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (isCurrent) setLoadState("error");
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [baseUrl, attempt]);
+
+  const retry = useCallback(() => {
+    setLoadState("loading");
+    setAttempt((n) => n + 1);
+  }, []);
 
   const handleChangeStatus = useCallback(
     (id: number, kind: "shot" | "asset", nextStatus: Status) => {
@@ -80,7 +94,7 @@ export function KanbanBoard({ baseUrl }: KanbanBoardProps) {
         <button
           type="button"
           className="mt-2 rounded bg-red-600 px-3 py-1 text-sm text-white"
-          onClick={() => void load()}
+          onClick={retry}
         >
           再試行
         </button>

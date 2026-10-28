@@ -59,6 +59,22 @@ describe("KanbanBoard", () => {
     expect(screen.getByText("Character_Hero")).toBeInTheDocument();
   });
 
+  it("再試行を押すと読み込み中に戻り、成功すれば盤面を表示する", async () => {
+    mockedListShots.mockRejectedValueOnce(new Error("offline"));
+    mockedListAssets.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<KanbanBoard baseUrl="http://localhost:8000" />);
+    await screen.findByRole("button", { name: "再試行" });
+
+    let finish: (items: ItemDto[]) => void = () => {};
+    mockedListShots.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    await user.click(screen.getByRole("button", { name: "再試行" }));
+
+    expect(screen.getByText(/読み込み中/)).toBeInTheDocument();
+    finish([item(1, "SHOT010", "in_review")]);
+    expect(await screen.findByText("SHOT010")).toBeInTheDocument();
+  });
+
   it("API接続失敗時はエラーバナーと再試行ボタンを表示する", async () => {
     mockedListShots.mockRejectedValue(new Error("network error"));
     mockedListAssets.mockResolvedValue([]);
