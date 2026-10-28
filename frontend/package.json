@@ -18,7 +18,7 @@
     "generate:api": "openapi-typescript openapi.json -o src/lib/api-types.ts"
   },
   "dependencies": {
-    "next": "^15.5.28",
+    "next": "^16.4.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
