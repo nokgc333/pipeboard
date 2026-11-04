@@ -1,5 +1,7 @@
 # PipeBoard mini
 
+[![CI Backend](https://github.com/nokgc333/pipeboard/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/nokgc333/pipeboard/actions/workflows/ci-backend.yml) [![CI Frontend](https://github.com/nokgc333/pipeboard/actions/workflows/ci-frontend.yml/badge.svg)](https://github.com/nokgc333/pipeboard/actions/workflows/ci-frontend.yml)
+
 > **English summary.** PipeBoard mini is a small production tracker (a slimmed-down ShotGrid/Kitsu): a kanban board for shots and assets with versions (thumbnails), comments, a project > sequence > shot hierarchy, an audit log and signed webhooks. Scene-check results (the shared report format used by unibridge and scene-doctor) feed a **publish gate** that blocks review and done until the required checks pass. It has three front ends on one REST API: a Next.js web app, a PySide6 desktop client, and a Houdini script that publishes a thumbnail, a check report and a status change in one call (verified on a real Houdini 22.0.466). Token auth with roles, rate limiting, migrations (SQLite with WAL, or PostgreSQL), Docker images on GHCR, and CI that includes Lighthouse, mutation tests and a compose smoke test.
 
 ショット/アセットの進捗をカンバン形式で管理し、Houdiniから直接ステータスを更新できるミニ・プロダクショントラッカー（ShotGrid/Kitsuの縮小版）。
@@ -16,9 +18,13 @@ Houdiniで作業を終えるたびに、ブラウザに切り替えて対象シ�
 
 ## 画面
 
-| Web: カンバンボード | Web: 詳細(バージョン・コメント) |
-| --- | --- |
-| ![カンバンボード](docs/images/web-board.png) | ![詳細画面](docs/images/web-detail.png) |
+Web: カンバンボード:
+
+![カンバンボード](docs/images/web-board.png)
+
+Web: 詳細(バージョン・コメント):
+
+![詳細画面](docs/images/web-detail.png)
 
 デスクトップクライアント(PySide6、ショットの閲覧と変更。F5 で更新、Ctrl+Enter で適用):
 
@@ -159,18 +165,36 @@ cd desktop_client && QT_QPA_PLATFORM=offscreen pytest --cov=. --cov-report=term-
 
 ## 認証・セキュリティ設定
 
-| 環境変数 | 既定値 | 意味 |
-| --- | --- | --- |
-| `PIPEBOARD_AUTH_MODE` | `local` | `local`=認証なし（自分のマシン専用） / `token`=Bearerトークン必須 |
-| `PIPEBOARD_API_TOKENS` | なし | `token` モードで必須。`viewer=...,editor=...,admin=...`（各12文字以上） |
-| `PIPEBOARD_CORS_ORIGINS` | `http://localhost:3000` | 許可するOrigin（カンマ区切り）。`*` は明示した場合のみ |
-| `PIPEBOARD_RATE_LIMIT_READ_PER_MINUTE` | `300` | 読み取りの上限（IPごと、1分あたり） |
-| `PIPEBOARD_RATE_LIMIT_WRITE_PER_MINUTE` | `60` | 書き込みの上限（同上） |
-| `PIPEBOARD_REQUIRED_CHECKS` | なし | 公開ゲートで必須にする検査（`scene-doctor,unibridge`）。未設定ならゲート無効 |
-| `PIPEBOARD_WEBHOOK_URL` / `PIPEBOARD_WEBHOOK_SECRET` | なし | 変更の署名つきWebhook（秘密鍵は16文字以上） |
-| `PIPEBOARD_DATABASE_URL` | SQLite | PostgreSQLにする場合は `postgresql+psycopg://...` |
-| `PIPEBOARD_API_TOKEN` | なし | デスクトップクライアント・Houdiniスクリプトが送るトークン |
-| `NEXT_PUBLIC_API_TOKEN` | なし | Webフロントが送るトークン（配信されるJSに含まれるため、閲覧専用トークンか信頼できるネットワークに限る） |
+- **`PIPEBOARD_AUTH_MODE`**
+  - 既定値: `local`
+  - 意味: `local`=認証なし（自分のマシン専用） / `token`=Bearerトークン必須
+- **`PIPEBOARD_API_TOKENS`**
+  - 既定値: なし
+  - 意味: `token` モードで必須。`viewer=...,editor=...,admin=...`（各12文字以上）
+- **`PIPEBOARD_CORS_ORIGINS`**
+  - 既定値: `http://localhost:3000`
+  - 意味: 許可するOrigin（カンマ区切り）。`*` は明示した場合のみ
+- **`PIPEBOARD_RATE_LIMIT_READ_PER_MINUTE`**
+  - 既定値: `300`
+  - 意味: 読み取りの上限（IPごと、1分あたり）
+- **`PIPEBOARD_RATE_LIMIT_WRITE_PER_MINUTE`**
+  - 既定値: `60`
+  - 意味: 書き込みの上限（同上）
+- **`PIPEBOARD_REQUIRED_CHECKS`**
+  - 既定値: なし
+  - 意味: 公開ゲートで必須にする検査（`scene-doctor,unibridge`）。未設定ならゲート無効
+- **`PIPEBOARD_WEBHOOK_URL` / `PIPEBOARD_WEBHOOK_SECRET`**
+  - 既定値: なし
+  - 意味: 変更の署名つきWebhook（秘密鍵は16文字以上）
+- **`PIPEBOARD_DATABASE_URL`**
+  - 既定値: SQLite
+  - 意味: PostgreSQLにする場合は `postgresql+psycopg://...`
+- **`PIPEBOARD_API_TOKEN`**
+  - 既定値: なし
+  - 意味: デスクトップクライアント・Houdiniスクリプトが送るトークン
+- **`NEXT_PUBLIC_API_TOKEN`**
+  - 既定値: なし
+  - 意味: Webフロントが送るトークン（配信されるJSに含まれるため、閲覧専用トークンか信頼できるネットワークに限る）
 
 ```bash
 export PIPEBOARD_AUTH_MODE=token
@@ -192,12 +216,10 @@ export PIPEBOARD_API_TOKENS="viewer=$(openssl rand -hex 16),editor=$(openssl ran
 
 ## ドキュメント
 
-| 文書 | 内容 |
-| --- | --- |
-| [docs/operations.md](docs/operations.md) | 起動・バックアップ・復旧・更新・設定・困ったとき |
-| [docs/api.md](docs/api.md) | API一覧（実際のAPIから生成し、テストで一致を保証） |
-| [docs/verification/](docs/verification/houdini-publish-22.0.466.md) | Houdini実機の検証記録 |
-| [CHANGELOG.md](CHANGELOG.md) | 変更履歴（0.2.0） |
+- **[docs/operations.md](docs/operations.md):** 起動・バックアップ・復旧・更新・設定・困ったとき
+- **[docs/api.md](docs/api.md):** API一覧（実際のAPIから生成し、テストで一致を保証）
+- **[docs/verification/](docs/verification/houdini-publish-22.0.466.md):** Houdini実機の検証記録
+- **[CHANGELOG.md](CHANGELOG.md):** 変更履歴（0.2.0）
 
 ## Design Decisions
 
@@ -211,19 +233,17 @@ export PIPEBOARD_API_TOKENS="viewer=$(openssl rand -hex 16),editor=$(openssl ran
 
 ## 設計判断(ADR)
 
-| 番号 | 内容 |
-| --- | --- |
-| [0001](docs/adr/0001-monorepo.md) | モノリポ・モジュラー構成の採用 |
-| [0002](docs/adr/0002-polymorphic-association.md) | VERSION/COMMENTのポリモーフィック関連採用 |
-| [0003](docs/adr/0003-sqlite.md) | SQLiteをv1の正本DBとして採用 |
-| [0004](docs/adr/0004-no-auth.md) | 認証・権限管理をv1スコープ外とする設計判断 |
-| [0005](docs/adr/0005-token-authentication.md) | トークン認証とロールを導入する（ADR-0004 を置き換える） |
-| [0006](docs/adr/0006-database-migrations-postgresql-and-wal.md) | マイグレーションと PostgreSQL 対応、SQLite は WAL |
-| [0007](docs/adr/0007-publish-gate.md) | 公開ゲート(検査に通らないものは、レビュー・完了に進めない) |
-| [0008](docs/adr/0008-audit-log-and-webhooks.md) | 監査ログと Webhook は、変更と同じトランザクションで記録する |
-| [0009](docs/adr/0009-generated-api-types.md) | フロントエンドの API の型は、OpenAPI から生成する |
-| [0010](docs/adr/0010-uploaded-images-are-public-capability-urls.md) | アップロード画像は、推測できない URL で認証なしに配信する |
-| [0011](docs/adr/0011-desktop-distribution.md) | デスクトップクライアントの配布は、当面ソースからの実行にする |
+- **[0001](docs/adr/0001-monorepo.md):** モノリポ・モジュラー構成の採用
+- **[0002](docs/adr/0002-polymorphic-association.md):** VERSION/COMMENTのポリモーフィック関連採用
+- **[0003](docs/adr/0003-sqlite.md):** SQLiteをv1の正本DBとして採用
+- **[0004](docs/adr/0004-no-auth.md):** 認証・権限管理をv1スコープ外とする設計判断
+- **[0005](docs/adr/0005-token-authentication.md):** トークン認証とロールを導入する（ADR-0004 を置き換える）
+- **[0006](docs/adr/0006-database-migrations-postgresql-and-wal.md):** マイグレーションと PostgreSQL 対応、SQLite は WAL
+- **[0007](docs/adr/0007-publish-gate.md):** 公開ゲート(検査に通らないものは、レビュー・完了に進めない)
+- **[0008](docs/adr/0008-audit-log-and-webhooks.md):** 監査ログと Webhook は、変更と同じトランザクションで記録する
+- **[0009](docs/adr/0009-generated-api-types.md):** フロントエンドの API の型は、OpenAPI から生成する
+- **[0010](docs/adr/0010-uploaded-images-are-public-capability-urls.md):** アップロード画像は、推測できない URL で認証なしに配信する
+- **[0011](docs/adr/0011-desktop-distribution.md):** デスクトップクライアントの配布は、当面ソースからの実行にする
 
 ## ライセンス
 
