@@ -25,7 +25,7 @@ def test_the_superseded_adr_points_to_its_replacement() -> None:
 
 
 def test_the_readme_images_exist() -> None:
-    images = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", README)
+    images = re.findall(r"!\[[^\]]*\]\((?!https?://)([^)]+)\)", README)
 
     assert len(images) >= 3
     for image in images:
